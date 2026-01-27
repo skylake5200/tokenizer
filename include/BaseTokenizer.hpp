@@ -12,6 +12,7 @@ enum ModelType
     InternVL3,
 
     SmolVLM2,
+    FastVLM,
 };
 
 enum RoleType

@@ -7,6 +7,7 @@
 #include "Qwen3Tokenizer.hpp"
 #include "InternVL3Tokenizer.hpp"
 #include "SmolVLM2Tokenizer.hpp"
+#include "FastVLMTokenizer.hpp"
 
 std::shared_ptr<BaseTokenizer> create_tokenizer(ModelType type)
 {
