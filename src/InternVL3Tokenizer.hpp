@@ -84,7 +84,6 @@
 //     }
 // };
 
-
 class InternVL3Tokenizer : public Qwen3Tokenizer<TEXT, IMAGE, VIDEO>
 {
 public:
@@ -95,7 +94,7 @@ public:
         img_end_token = "</img>";
     }
 
-    std::string apply_chat_template(const std::vector<Content> &contents) override
+    std::string apply_chat_template(const std::vector<Content> &contents, bool add_generation_prompt) override
     {
         // check contents type
         for (const auto &content : contents)
@@ -159,11 +158,11 @@ public:
             }
         }
 
-        if (contents.back().role == USER && add_generation_prompt)
+        if (contents.size() > 0 && contents.back().role == USER && add_generation_prompt)
         {
             text << "<|im_start|>assistant\n";
         }
-        
+
         return text.str();
         // ALOGD("text: \n%s", text.str().c_str());
         // return tokenizer->encode(text.str());

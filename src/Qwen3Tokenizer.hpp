@@ -10,7 +10,6 @@ template <ContentType... Types>
 class Qwen3Tokenizer : public BaseMixinTokenizer<Types...>
 {
 protected:
-    bool add_generation_prompt = true;
     std::string video_pad_token = "<|video_pad|>";
     std::string image_pad_token = "<|image_pad|>";
 
@@ -18,7 +17,7 @@ protected:
     std::string img_end_token = "<|vision_end|>";
 
 public:
-    std::string apply_chat_template(const std::vector<Content> &contents) override
+    std::string apply_chat_template(const std::vector<Content> &contents, bool add_generation_prompt) override
     {
         // check contents type
         for (const auto &content : contents)
@@ -47,7 +46,8 @@ public:
                          << content.data << "<|im_end|>\n";
                     break;
                 case IMAGE:
-                    text << "<|im_start|>user\n" << img_start_token;
+                    text << "<|im_start|>user\n"
+                         << img_start_token;
                     for (int i = 0; i < content.num_media * content.num_media_tokens; i++)
                     {
                         text << image_pad_token;
@@ -56,7 +56,8 @@ public:
                     text << content.data << "<|im_end|>\n";
                     break;
                 case VIDEO:
-                    text << "<|im_start|>user\n" << img_start_token;
+                    text << "<|im_start|>user\n"
+                         << img_start_token;
                     for (int i = 0; i < content.num_media * content.num_media_tokens; i++)
                     {
                         text << video_pad_token;
@@ -85,7 +86,7 @@ public:
             }
         }
 
-        if (contents.back().role == USER && add_generation_prompt)
+        if (contents.size() > 0 && contents.back().role == USER && add_generation_prompt)
         {
             text << "<|im_start|>assistant\n";
         }

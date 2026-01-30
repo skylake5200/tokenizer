@@ -45,7 +45,6 @@ protected:
     // 是否在上下文中保留thinking内容, 默认为false
     bool think_in_prompt = false;
 
-    
 public:
     virtual bool load(const std::string tokenizer_path) = 0;
     virtual bool support(ContentType type) = 0;
@@ -60,12 +59,12 @@ public:
     virtual void clear_addition_stop_tokens() = 0;
     virtual std::vector<int> get_stop_tokens() = 0;
 
-    virtual std::vector<int> encode(const std::vector<Content> &contents)
+    virtual std::vector<int> encode(const std::vector<Content> &contents, bool add_generation_prompt = true)
     {
         return encode(apply_chat_template(contents));
     }
 
-    virtual std::string apply_chat_template(const std::vector<Content> &contents) = 0;
+    virtual std::string apply_chat_template(const std::vector<Content> &contents, bool add_generation_prompt = true) = 0;
     virtual std::vector<int> encode(const std::string &text) = 0;
     virtual std::string decode(const std::vector<int> &ids) = 0;
     virtual std::string decode(int id) = 0;

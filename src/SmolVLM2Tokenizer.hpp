@@ -60,7 +60,7 @@ protected:
     }
 
 public:
-    std::string apply_chat_template(const std::vector<Content> &contents) override
+    std::string apply_chat_template(const std::vector<Content> &contents, bool add_generation_prompt) override
     {
         // check contents type
         for (const auto &content : contents)
@@ -127,7 +127,7 @@ public:
             }
         }
 
-        if (contents.back().role == USER && add_generation_prompt)
+        if (contents.size() > 0 && contents.back().role == USER && add_generation_prompt)
         {
             text << "Assistant:";
         }
