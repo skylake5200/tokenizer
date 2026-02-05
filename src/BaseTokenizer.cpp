@@ -8,6 +8,7 @@
 #include "InternVL3Tokenizer.hpp"
 #include "SmolVLM2Tokenizer.hpp"
 #include "FastVLMTokenizer.hpp"
+#include "HunYuanTokenizer.hpp"
 
 std::shared_ptr<BaseTokenizer> create_tokenizer(ModelType type)
 {

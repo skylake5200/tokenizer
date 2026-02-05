@@ -11,6 +11,8 @@ enum ModelType
 
     InternVL3,
 
+    HunYuan,
+
     SmolVLM2,
     FastVLM,
 };
@@ -51,6 +53,11 @@ public:
     virtual void set_think_in_prompt(bool think_in_prompt)
     {
         this->think_in_prompt = think_in_prompt;
+    }
+
+    // 注释参数名避免编译器警告
+    virtual void set_add_generation_prompt(bool /*enable*/)
+    {
     }
 
     virtual bool is_stop(int token) = 0;
