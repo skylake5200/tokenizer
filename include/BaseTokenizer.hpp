@@ -55,11 +55,6 @@ public:
         this->think_in_prompt = think_in_prompt;
     }
 
-    // 注释参数名避免编译器警告
-    virtual void set_add_generation_prompt(bool /*enable*/)
-    {
-    }
-
     virtual bool is_stop(int token) = 0;
     virtual void add_stop_token(int token) = 0;
     virtual bool add_stop_token(std::string stop_token) = 0;

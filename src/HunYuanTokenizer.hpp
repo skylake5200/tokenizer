@@ -8,8 +8,6 @@
 class HunYuanTokenizer : public BaseMixinTokenizer<TEXT>
 {
 protected:
-    bool add_generation_prompt = true;
-
     const std::string bos_token = "<｜hy_begin▁of▁sentence｜>";
     const std::string user_token = "<｜hy_User｜>";
     const std::string assistant_token = "<｜hy_Assistant｜>";
@@ -18,12 +16,7 @@ protected:
     const std::string placeholder_8 = "<｜hy_place▁holder▁no▁8｜>";
 
 public:
-    void set_add_generation_prompt(bool enable) override
-    {
-        add_generation_prompt = enable;
-    }
-
-    std::string apply_chat_template(const std::vector<Content> &contents) override
+    std::string apply_chat_template(const std::vector<Content> &contents, bool add_generation_prompt) override
     {
         // check contents type
         for (const auto &content : contents)
