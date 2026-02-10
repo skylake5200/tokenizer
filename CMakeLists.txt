@@ -30,6 +30,7 @@ MESSAGE(STATUS "TOKENIZER_BUILD_TESTS = ${TOKENIZER_BUILD_TESTS}")
 if(TOKENIZER_BUILD_TESTS)
     add_test(test_tokenizer)
     add_test(test_num2words_en)
+    add_test(test_string_create)
 endif()
 
 

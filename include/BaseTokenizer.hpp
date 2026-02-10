@@ -15,6 +15,14 @@ enum ModelType
 
     SmolVLM2,
     FastVLM,
+
+    MiniCPM4,
+    MiniCPMV4,
+
+    Gemma3,
+    Gemma3VL,
+
+    SmolLM3,
 };
 
 enum RoleType
@@ -73,3 +81,4 @@ public:
 };
 
 std::shared_ptr<BaseTokenizer> create_tokenizer(ModelType type);
+std::shared_ptr<BaseTokenizer> create_tokenizer(std::string type_name);

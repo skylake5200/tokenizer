@@ -26,8 +26,19 @@ public:
             return NULL;
         }
         void *obj = fun();
-        destroy_fun = m_destroy_map[clsid];
+        destroy_fun = m_id_destroy_map[clsid];
         return obj;
+    }
+
+    void *getObjectByName(std::string name, delete_fun &destroy_fun)
+    {
+        std::map<std::string, int>::iterator it = m_name_id_map.find(name);
+        if (it == m_name_id_map.end())
+        {
+            return NULL;
+        }
+        int clsid = it->second;
+        return getObjectByID(clsid, destroy_fun);
     }
 
     bool contain(int clsid)
@@ -43,7 +54,8 @@ public:
     void registClass(int clsid, std::string name, create_fun fun, delete_fun destroy_fun)
     {
         m_id_map[clsid] = fun;
-        m_destroy_map[clsid] = destroy_fun;
+        m_id_destroy_map[clsid] = destroy_fun;
+        m_name_id_map[name] = clsid;
     }
 
     //??????
@@ -56,7 +68,8 @@ public:
 private:
     OBJFactory() {}
     std::map<int, create_fun> m_id_map;
-    std::map<int, delete_fun> m_destroy_map;
+    std::map<int, delete_fun> m_id_destroy_map;
+    std::map<std::string, int> m_name_id_map;
 };
 
 class RegisterAction
