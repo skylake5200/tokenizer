@@ -487,3 +487,14 @@ gdb --args ./test_tokenizer -t tokenizer.txt -m 7
 - [HuggingFace Chat Templating](https://huggingface.co/docs/transformers/main/en/chat_templating)
 - [Jinja2 模板语法](https://jinja.palletsprojects.com/)
 - 项目参考: [mnn-llm](https://github.com/wangzhaode/mnn-llm), [llm-export](https://github.com/wangzhaode/llm-export)
+
+### SmolLM2 (新增)
+- **ModelType**: 11
+- **格式**: IM 格式 `<|im_start|>{role}
+{content}<|im_end|>
+`
+- **特点**: 
+  - BOS: `<|im_start|>` (ID: 1)
+  - EOS: `<|im_end|>` (ID: 2)
+  - 与 Qwen/MiniCPM 格式兼容
+- **文件**: `src/SmolLM2Tokenizer.hpp`

@@ -2,7 +2,24 @@
 方便好用的纯纯 C++ tokenizer 封装
 
 ## 支持的模型
-[ModelType](include/BaseTokenizer.hpp#L6)
+
+| ModelType | 名称 | 说明 |
+|-----------|------|------|
+| 0 | Qwen2_5 | Qwen2.5 系列 |
+| 1 | Qwen3 | Qwen3 系列 |
+| 2 | Qwen3VL | Qwen3-VL 多模态 |
+| 3 | InternVL3 | InternVL3 多模态 |
+| 4 | HunYuan | 混元系列 |
+| 5 | SmolVLM2 | SmolVLM2 多模态 |
+| 6 | FastVLM | FastVLM 多模态 |
+| 7 | MiniCPM4 | MiniCPM4 文本 |
+| 8 | MiniCPMV4 | MiniCPM-V4 多模态 |
+| 9 | Gemma3 | Gemma3 文本 (1b) |
+| 10 | Gemma3VL | Gemma3 多模态 (4b/12b/27b) |
+| 11 | SmolLM2 | SmolLM2 系列 |
+| 12 | SmolLM3 | SmolLM3 系列 |
+
+详见 [ModelType](include/BaseTokenizer.hpp#L6)
 
 ## 导出
 导出模型的 `hf` 的路径的 `tokenizer` 到 `txt` 文件，方便在 C++ 中使用

@@ -22,6 +22,7 @@ enum ModelType
     Gemma3,
     Gemma3VL,
 
+    SmolLM2,
     SmolLM3,
 };
 
