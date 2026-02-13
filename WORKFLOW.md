@@ -42,7 +42,12 @@ enum ModelType
     MiniCPMV4,    // 8
     Gemma3,       // 9
     Gemma3VL,     // 10
-    SmolLM3,      // 11
+    SmolLM2,      // 11
+    SmolLM3,      // 12
+    GLM5,         // 13
+    GLM5VL,       // 14
+    KimiK25,      // 15
+    KimiK25VL,    // 16
     // 新增模型在这里添加...
 };
 ```
@@ -498,3 +503,30 @@ gdb --args ./test_tokenizer -t tokenizer.txt -m 7
   - EOS: `<|im_end|>` (ID: 2)
   - 与 Qwen/MiniCPM 格式兼容
 - **文件**: `src/SmolLM2Tokenizer.hpp`
+
+### GLM-5 (新增)
+- **ModelType**: 13 (GLM5), 14 (GLM5VL)
+- **Tokenizer 文件**: `glm5_tokenizer.txt` (两个版本共用同一个文件)
+- **格式**: `[gMASK]<sop><|system|>{content}<|user|>{content}<|assistant|>{content}`
+- **特点**:
+  - 前缀: `[gMASK]<sop>`
+  - System: `<|system|>{content}`
+  - User: `<|user|>{content}`
+  - Assistant: `<|assistant|>{content}`
+  - 支持 thinking: `<think>{reasoning}</think>` 或 `</think>`
+  - 多模态: `<|begin_of_image|>`, `<|end_of_image|>`, `<|begin_of_video|>`, `<|end_of_video|>`
+- **实现**: 使用模板类 `GLM5Tokenizer<TEXT>` 和 `GLM5Tokenizer<TEXT, IMAGE, VIDEO>`
+- **文件**: `src/GLM5Tokenizer.hpp`
+
+### Kimi-K2.5 (新增)
+- **ModelType**: 15 (KimiK25), 16 (KimiK25VL)
+- **Tokenizer 文件**: `kimi_k25_tokenizer.txt` (两个版本共用同一个文件)
+- **格式**: `<|im_system|>system<|im_middle|>{content}<|im_end|><|im_user|>user<|im_middle|>{content}<|im_end|><|im_assistant|>assistant<|im_middle|<think></think>{content}<|im_end|>`
+- **特点**:
+  - System: `<|im_system|>system<|im_middle|>{content}<|im_end|>`
+  - User: `<|im_user|>user<|im_middle|>{content}<|im_end|>`
+  - Assistant: `<|im_assistant|>assistant<|im_middle|<think></think>{content}<|im_end|>`
+  - 支持图片: `<|media_begin|>image<|media_content|><|media_pad|><|media_end|>`
+  - 支持视频: `<|kimi_k25_video_placeholder|>`
+- **实现**: 使用模板类 `KimiK25Tokenizer<TEXT>` 和 `KimiK25Tokenizer<TEXT, IMAGE, VIDEO>`
+- **文件**: `src/KimiK25Tokenizer.hpp`

@@ -24,6 +24,12 @@ enum ModelType
 
     SmolLM2,
     SmolLM3,
+
+    GLM5,
+    GLM5VL,
+
+    KimiK25,
+    KimiK25VL,
 };
 
 enum RoleType

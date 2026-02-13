@@ -13,6 +13,8 @@
 #include "Gemma3Tokenizer.hpp"
 #include "SmolLM2Tokenizer.hpp"
 #include "SmolLM3Tokenizer.hpp"
+#include "GLM5Tokenizer.hpp"
+#include "KimiK25Tokenizer.hpp"
 
 std::shared_ptr<BaseTokenizer> create_tokenizer(ModelType type)
 {
