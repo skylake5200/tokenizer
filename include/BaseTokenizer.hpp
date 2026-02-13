@@ -30,6 +30,13 @@ enum ModelType
 
     KimiK25,
     KimiK25VL,
+
+    Qwen3Omni,
+
+    MiniMaxM2,
+    MiniMaxM2VL,
+
+    MiniCPMO4_5,
 };
 
 enum RoleType

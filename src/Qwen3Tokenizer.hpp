@@ -12,9 +12,12 @@ class Qwen3Tokenizer : public BaseMixinTokenizer<Types...>
 protected:
     std::string video_pad_token = "<|video_pad|>";
     std::string image_pad_token = "<|image_pad|>";
+    std::string audio_pad_token = "<|audio_pad|>";
 
     std::string img_start_token = "<|vision_start|>";
     std::string img_end_token = "<|vision_end|>";
+    std::string audio_start_token = "<|audio_start|>";
+    std::string audio_end_token = "<|audio_end|>";
 
 public:
     std::string apply_chat_template(const std::vector<Content> &contents, bool add_generation_prompt) override
@@ -65,7 +68,16 @@ public:
                     text << img_end_token;
                     text << content.data << "<|im_end|>\n";
                     break;
-
+                case AUDIO:
+                    text << "<|im_start|>user\n"
+                         << audio_start_token;
+                    for (int i = 0; i < content.num_media * content.num_media_tokens; i++)
+                    {
+                        text << audio_pad_token;
+                    }
+                    text << audio_end_token;
+                    text << content.data << "<|im_end|>\n";
+                    break;
                 default:
                     break;
                 }
@@ -101,3 +113,5 @@ using qwen3_tokenizer = Qwen3Tokenizer<TEXT>;
 REGISTER(Qwen3, qwen3_tokenizer)
 using qwen2_5_tokenizer = Qwen3Tokenizer<TEXT>;
 REGISTER(Qwen2_5, qwen2_5_tokenizer)
+using qwen3omni_tokenizer = Qwen3Tokenizer<TEXT, IMAGE, VIDEO, AUDIO>;
+REGISTER(Qwen3Omni, qwen3omni_tokenizer)

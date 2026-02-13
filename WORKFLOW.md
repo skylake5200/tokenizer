@@ -530,3 +530,42 @@ gdb --args ./test_tokenizer -t tokenizer.txt -m 7
   - 支持视频: `<|kimi_k25_video_placeholder|>`
 - **实现**: 使用模板类 `KimiK25Tokenizer<TEXT>` 和 `KimiK25Tokenizer<TEXT, IMAGE, VIDEO>`
 - **文件**: `src/KimiK25Tokenizer.hpp`
+
+### Qwen3-Omni (新增)
+- **ModelType**: 17 (Qwen3Omni)
+- **Tokenizer 文件**: `qwen3_omni_tokenizer.txt`
+- **格式**: 与 Qwen3 相同 `<|im_start|>{role}\n{content}<|im_end|>\n`
+- **特点**:
+  - 与 Qwen3VL 相同格式
+  - 支持文本、图像、视频、音频
+  - Audio: `<|audio_start|>...<|audio_pad|>...<|audio_end|>`
+- **实现**: 复用 `Qwen3Tokenizer<TEXT, IMAGE, VIDEO, AUDIO>`
+- **文件**: `src/Qwen3Tokenizer.hpp`
+
+### MiniMax-M2.1 (新增)
+- **ModelType**: 18 (MiniMaxM2), 19 (MiniMaxM2VL)
+- **Tokenizer 文件**: `minimaxm2_tokenizer.txt` (两个版本共用同一个文件)
+- **格式**: `]~!b[]~b]system\n...{content}[e~[\n]~b]user\n{content}[e~[\n]~b]ai\n{content}[e~[\n`
+- **特点**:
+  - BOS: `]~!b[` (ID: 200034)
+  - EOS: `[e~[` (ID: 200020)
+  - System: `]~!b[]~b]system\n{content}[e~[\n`
+  - User: `]~b]user\n{content}[e~[\n`
+  - Assistant: `]~b]ai\n{content}[e~[\n`
+  - 支持图片: `]<]image[>[`
+  - 支持视频: `]<]video[>[`
+  - 支持语音: `]<]speech[>[`
+- **实现**: 使用模板类 `MiniMaxM2Tokenizer<TEXT>` 和 `MiniMaxM2Tokenizer<TEXT, IMAGE, VIDEO, AUDIO>`
+- **文件**: `src/MiniMaxM2Tokenizer.hpp`
+
+### MiniCPM-o-4_5 (新增)
+- **ModelType**: 20 (MiniCPMO4_5)
+- **Tokenizer 文件**: `minicpmo4_5_tokenizer.txt`
+- **格式**: 与 MiniCPM4 相同 `<s><|im_start|>{role}\n{content}<|im_end|>\n`
+- **特点**:
+  - 与 MiniCPM4 相同格式
+  - 支持文本、图像、音频
+  - Audio: `<|audio_start|>...<|audio|>...<|audio_end|>`
+- **实现**: 复用 `MiniCPM4Tokenizer<TEXT, IMAGE, AUDIO>`
+- **文件**: `src/MiniCPM4Tokenizer.hpp`
+

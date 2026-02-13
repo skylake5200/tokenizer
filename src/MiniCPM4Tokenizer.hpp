@@ -11,6 +11,9 @@ class MiniCPM4Tokenizer : public BaseMixinTokenizer<Types...>
 {
 protected:
     std::string image_pad_token = "<image>";
+    std::string audio_start_token = "<|audio_start|>";
+    std::string audio_end_token = "<|audio_end|>";
+    std::string audio_pad_token = "<|audio|>";
 
 public:
     std::string apply_chat_template(const std::vector<Content> &contents, bool add_generation_prompt) override
@@ -49,6 +52,16 @@ public:
                          << image_pad_token << "\n"
                          << content.data << "<|im_end|>\n";
                     break;
+                case AUDIO:
+                    text << "<|im_start|>user\n"
+                         << audio_start_token;
+                    for (int i = 0; i < content.num_media * content.num_media_tokens; i++)
+                    {
+                        text << audio_pad_token;
+                    }
+                    text << audio_end_token << "\n"
+                         << content.data << "<|im_end|>\n";
+                    break;
                 default:
                     break;
                 }
@@ -83,3 +96,6 @@ REGISTER(MiniCPM4, minicpm4_tokenizer)
 
 using minicpmv4_tokenizer = MiniCPM4Tokenizer<TEXT, IMAGE>;
 REGISTER(MiniCPMV4, minicpmv4_tokenizer)
+
+using minicpmo4_5_tokenizer = MiniCPM4Tokenizer<TEXT, IMAGE, AUDIO>;
+REGISTER(MiniCPMO4_5, minicpmo4_5_tokenizer)
