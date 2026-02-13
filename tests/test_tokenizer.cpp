@@ -103,7 +103,7 @@ bool run_text_test(std::shared_ptr<BaseTokenizer> tokenizer, const TextTestCase&
     
     std::vector<Content> contents = {
         {SYSTEM, TEXT, system_prompt},
-        {USER, TEXT, "你好"},
+        {USER, TEXT, "Hello"},
         {ASSISTANT, TEXT, test_case.assistant_response}
     };
     
@@ -141,7 +141,7 @@ bool run_text_test(std::shared_ptr<BaseTokenizer> tokenizer, const TextTestCase&
     }
     
     // 测试增量对话
-    contents.push_back({USER, TEXT, "你能做什么"});
+    contents.push_back({USER, TEXT, "What can you do"});
     auto ids2 = tokenizer->encode(contents);
     
     if (verbose) {
@@ -189,8 +189,8 @@ bool run_media_test(std::shared_ptr<BaseTokenizer> tokenizer, const MediaTestCas
     
     std::vector<Content> contents = {
         {SYSTEM, TEXT, system_prompt},
-        {USER, TEXT, "你好"},
-        {ASSISTANT, TEXT, "你好！有什么我可以帮助你的吗？"}
+        {USER, TEXT, "Hello"},
+        {ASSISTANT, TEXT, "Hello! How can I help you today?"}
     };
     
     // 基础对话
@@ -316,9 +316,9 @@ int main(int argc, char *argv[])
         printf("\n%s%s=== Text Tests ===%s\n", color::bold, color::cyan, color::reset);
         
         TextTestCase text_tests[] = {
-            {"think_in_prompt=true", true, "<think>\n\n</think>\n\n你好！有什么我可以帮助你的吗？"},
-            {"think_in_prompt=false (with think tags)", false, "<think>\n\n</think>\n\n你好！有什么我可以帮助你的吗？"},
-            {"think_in_prompt=false (remove think)", false, "</think>\n\n你好！有什么我可以帮助你的吗？"},
+            {"think_in_prompt=true", true, "<think>\n\n</think>\n\nHello! How can I help you today?"},
+            {"think_in_prompt=false (with think tags)", false, "<think>\n\n</think>\n\nHello! How can I help you today?"},
+            {"think_in_prompt=false (remove think)", false, "</think>\n\nHello! How can I help you today?"},
         };
         
         for (const auto& test : text_tests) {
@@ -331,8 +331,8 @@ int main(int argc, char *argv[])
         printf("\n%s%s=== Media Tests ===%s\n", color::bold, color::cyan, color::reset);
         
         MediaTestCase media_tests[] = {
-            {"IMAGE input", IMAGE, "帮我看看这张图片", 1, 256},
-            {"VIDEO input", VIDEO, "帮我看看这个视频", 8, 256},
+            {"IMAGE input", IMAGE, "Please analyze this image", 1, 256},
+            {"VIDEO input", VIDEO, "Please analyze this video", 8, 256},
         };
         
         for (const auto& test : media_tests) {
