@@ -32,6 +32,7 @@ enum ModelType
     KimiK25VL,
 
     Qwen3Omni,
+    Qwen3_5,
 
     MiniMaxM2,
     MiniMaxM2VL,

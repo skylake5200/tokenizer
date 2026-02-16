@@ -569,3 +569,15 @@ gdb --args ./test_tokenizer -t tokenizer.txt -m 7
 - **实现**: 复用 `MiniCPM4Tokenizer<TEXT, IMAGE, AUDIO>`
 - **文件**: `src/MiniCPM4Tokenizer.hpp`
 
+
+### Qwen3.5 (新增)
+- **ModelType**: 18 (Qwen3_5)
+- **Tokenizer 文件**: `qwen3_5_tokenizer.txt`
+- **格式**: 与 Qwen3 相同 `<|im_start|>{role}\n{content}<|im_end|>\n`
+- **特点**:
+  - Vocab 大小: 248077 (vs Qwen3-Omni 的 151676)
+  - 支持文本、图像、视频、音频
+  - Special token IDs: 248044-248076
+- **实现**: 复用 `Qwen3Tokenizer<TEXT, IMAGE, VIDEO, AUDIO>`
+- **文件**: `src/Qwen3Tokenizer.hpp`, `tests/assets/qwen3_5_tokenizer.txt`
+
