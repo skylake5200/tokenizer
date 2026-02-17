@@ -581,3 +581,9 @@ gdb --args ./test_tokenizer -t tokenizer.txt -m 7
 - **实现**: 复用 `Qwen3Tokenizer<TEXT, IMAGE, VIDEO, AUDIO>`
 - **文件**: `src/Qwen3Tokenizer.hpp`, `tests/assets/qwen3_5_tokenizer.txt`
 
+
+### 更新说明 (2024-02-13)
+- Qwen3.5 改为 Qwen3_5VL (ModelType 19)
+- Qwen3_5 (ModelType 18) 预留用于后续纯文本版本
+- Qwen3_5VL 支持 TEXT, IMAGE, VIDEO (不含 AUDIO)
+

@@ -115,5 +115,7 @@ using qwen2_5_tokenizer = Qwen3Tokenizer<TEXT>;
 REGISTER(Qwen2_5, qwen2_5_tokenizer)
 using qwen3omni_tokenizer = Qwen3Tokenizer<TEXT, IMAGE, VIDEO, AUDIO>;
 REGISTER(Qwen3Omni, qwen3omni_tokenizer)
-using qwen3_5_tokenizer = Qwen3Tokenizer<TEXT, IMAGE, VIDEO, AUDIO>;
+using qwen3_5_tokenizer = Qwen3Tokenizer<TEXT>;
 REGISTER(Qwen3_5, qwen3_5_tokenizer)
+using qwen3_5vl_tokenizer = Qwen3Tokenizer<TEXT, IMAGE, VIDEO>;
+REGISTER(Qwen3_5VL, qwen3_5vl_tokenizer)
