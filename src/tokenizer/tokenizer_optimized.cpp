@@ -435,9 +435,10 @@ void Sentencepiece::encode(const std::string& str, std::vector<int>& ids) {
 
 std::string Sentencepiece::decode(int id) const {
     auto piece = sentence_pieces_[id].piece;
-    int pos = piece.find("▁");
-    if (pos != -1) {
-        piece.replace(pos, pos + 3, " ");
+    size_t pos = 0;
+    while ((pos = piece.find("▁", pos)) != std::string::npos) {
+        piece.replace(pos, 3, " ");
+        pos += 1;
     }
     return piece;
 }
