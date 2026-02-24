@@ -123,7 +123,7 @@ public:
             pos += 1;
         }
         pos = 0;
-        while ((pos = result.find("\xe2\x90\x81", pos)) != std::string::npos) {
+        while ((pos = result.find("\xe2\x96\x81", pos)) != std::string::npos) {
             result.replace(pos, 3, " ");  // ▁ -> space (for Gemma3)
             pos += 1;
         }
@@ -152,7 +152,7 @@ public:
             pos += 1;
         }
         pos = 0;
-        while ((pos = result.find("\xe2\x90\x81", pos)) != std::string::npos) {
+        while ((pos = result.find("\xe2\x96\x81", pos)) != std::string::npos) {
             result.replace(pos, 3, " ");  // ▁ -> space (for Gemma3)
             pos += 1;
         }
