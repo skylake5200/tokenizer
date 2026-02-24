@@ -435,10 +435,9 @@ void Sentencepiece::encode(const std::string& str, std::vector<int>& ids) {
 
 std::string Sentencepiece::decode(int id) const {
     auto piece = sentence_pieces_[id].piece;
-    size_t pos = 0;
-    while ((pos = piece.find("▁", pos)) != std::string::npos) {
-        piece.replace(pos, 3, " ");
-        pos += 1;
+    int pos = piece.find("▁");
+    if (pos != -1) {
+        piece.replace(pos, pos + 3, " ");
     }
     return piece;
 }
@@ -517,37 +516,18 @@ void Tiktoken::encode(const std::string& str, std::vector<int>& ids) {
         return;
     }
 
-    // BPE preprocessing: convert standard whitespace to BPE special chars
-    // This is needed because BPE tokenizers (like GPT-2, Qwen) use special
-    // Unicode chars to represent whitespace:
-    //   - Space (U+0020) -> Ġ (U+0120)
-    //   - Newline (U+000A) -> Ċ (U+010A)
-    std::string bpe_str;
-    bpe_str.reserve(str.size() * 2);
-    for (unsigned char c : str) {
-        if (c == ' ') {
-            bpe_str += "\xc4\xa0";  // Ġ
-        } else if (c == '\n') {
-            bpe_str += "\xc4\x8a";  // Ċ
-        } else if (c == '\t') {
-            bpe_str += "\xc4\x89";  // ĉ
-        } else {
-            bpe_str += c;
-        }
-    }
-
     // Rough heuristic to reduce reallocations.
-    ids.reserve(ids.size() + bpe_str.size() / 4);
+    ids.reserve(ids.size() + str.size() / 4);
 
     size_t i = 0;
-    while (i < bpe_str.size()) {
+    while (i < str.size()) {
         int node = 0;
         int last_id = -1;
         size_t last_len = 0;
 
-        const size_t limit = std::min(bpe_str.size(), i + max_token_len_);
+        const size_t limit = std::min(str.size(), i + max_token_len_);
         for (size_t j = i; j < limit; ++j) {
-            const unsigned char c = (unsigned char)bpe_str[j];
+            const unsigned char c = (unsigned char)str[j];
             const int nxt = trie_find_next(node, c);
             if (nxt < 0) break;
             node = nxt;
@@ -558,9 +538,8 @@ void Tiktoken::encode(const std::string& str, std::vector<int>& ids) {
         }
 
         if (last_id == -1) {
-            // Skip character that cannot be encoded
-            i += 1;
-            continue;
+            std::cerr << "Error: No encoding found for the sequence starting at position " << i << std::endl;
+            return;
         }
 
         ids.push_back(last_id);
@@ -572,36 +551,7 @@ std::string Tiktoken::decode(int id) const {
     if (id >= decoder_.size()) {
         return "";
     }
-    std::string result = decoder_[id];
-    
-    // BPE postprocessing: convert BPE special chars back to standard whitespace
-    // This reverses the encoding transformation:
-    //   Ġ (U+0120, \xc4\xa0) -> Space (U+0020)
-    //   Ċ (U+010A, \xc4\x8a) -> Newline (U+000A)
-    //   ĉ (U+0109, \xc4\x89) -> Tab (U+0009)
-    std::string output;
-    output.reserve(result.size());
-    for (size_t i = 0; i < result.size(); ++i) {
-        if (i + 1 < result.size() && 
-            (unsigned char)result[i] == 0xc4 && 
-            (unsigned char)result[i+1] == 0xa0) {
-            output += ' ';  // Ġ -> space
-            i += 1;
-        } else if (i + 1 < result.size() && 
-                   (unsigned char)result[i] == 0xc4 && 
-                   (unsigned char)result[i+1] == 0x8a) {
-            output += '\n';  // Ċ -> newline
-            i += 1;
-        } else if (i + 1 < result.size() && 
-                   (unsigned char)result[i] == 0xc4 && 
-                   (unsigned char)result[i+1] == 0x89) {
-            output += '\t';  // ĉ -> tab
-            i += 1;
-        } else {
-            output += result[i];
-        }
-    }
-    return output;
+    return decoder_[id];
 }
 
 std::vector<int> BertTokenizer::word_piece(const std::string& token) {

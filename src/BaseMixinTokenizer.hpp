@@ -103,60 +103,11 @@ public:
         {
             text << tokenizer->decode(id);
         }
-        std::string result = text.str();
-        
-        // Post-processing: replace special whitespace characters
-        // This handles tokenizers that split UTF-8 characters into separate tokens
-        size_t pos = 0;
-        while ((pos = result.find("\xc4\xa0", pos)) != std::string::npos) {
-            result.replace(pos, 2, " ");  // Ġ -> space
-            pos += 1;
-        }
-        pos = 0;
-        while ((pos = result.find("\xc4\x8a", pos)) != std::string::npos) {
-            result.replace(pos, 2, "\n");  // Ċ -> newline
-            pos += 1;
-        }
-        pos = 0;
-        while ((pos = result.find("\xc4\x89", pos)) != std::string::npos) {
-            result.replace(pos, 2, "\t");  // ĉ -> tab
-            pos += 1;
-        }
-        pos = 0;
-        while ((pos = result.find("\xe2\x96\x81", pos)) != std::string::npos) {
-            result.replace(pos, 3, " ");  // ▁ -> space (for Gemma3)
-            pos += 1;
-        }
-        
-        return result;
+        return text.str();
     }
 
     std::string decode(int id) override
     {
-        std::string result = tokenizer->decode(id);
-        
-        // Post-processing: replace special whitespace characters
-        size_t pos = 0;
-        while ((pos = result.find("\xc4\xa0", pos)) != std::string::npos) {
-            result.replace(pos, 2, " ");  // Ġ -> space
-            pos += 1;
-        }
-        pos = 0;
-        while ((pos = result.find("\xc4\x8a", pos)) != std::string::npos) {
-            result.replace(pos, 2, "\n");  // Ċ -> newline
-            pos += 1;
-        }
-        pos = 0;
-        while ((pos = result.find("\xc4\x89", pos)) != std::string::npos) {
-            result.replace(pos, 2, "\t");  // ĉ -> tab
-            pos += 1;
-        }
-        pos = 0;
-        while ((pos = result.find("\xe2\x96\x81", pos)) != std::string::npos) {
-            result.replace(pos, 3, " ");  // ▁ -> space (for Gemma3)
-            pos += 1;
-        }
-        
-        return result;
+        return tokenizer->decode(id);
     }
 };
