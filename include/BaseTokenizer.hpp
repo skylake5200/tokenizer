@@ -87,7 +87,7 @@ public:
 
     virtual std::vector<int> encode(const std::vector<Content> &contents, bool add_generation_prompt = true)
     {
-        return encode(apply_chat_template(contents));
+        return encode(apply_chat_template(contents, add_generation_prompt));
     }
 
     virtual std::string apply_chat_template(const std::vector<Content> &contents, bool add_generation_prompt = true) = 0;
