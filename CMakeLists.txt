@@ -17,6 +17,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include_directories(include)
 
 add_library(tokenizer src/BaseTokenizer.cpp src/tokenizer/tokenizer_optimized.cpp)
+set_target_properties(tokenizer PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 function(add_test test_name)
     add_executable(${test_name} tests/${test_name}.cpp)
