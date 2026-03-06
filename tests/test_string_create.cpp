@@ -27,6 +27,7 @@ int main() {
         {"Qwen3", true},
         {"Qwen3VL", true},
         {"InternVL3", true},
+        {"InternVL3_5", true},
         {"HunYuan", true},
         {"SmolVLM2", true},
         {"FastVLM", true},

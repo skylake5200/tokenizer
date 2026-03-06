@@ -168,6 +168,11 @@ public:
         // return tokenizer->encode(text.str());
     }
 };
-REGISTER(InternVL3, InternVL3Tokenizer)
+using internvl3_tokenizer = InternVL3Tokenizer;
+REGISTER(InternVL3, internvl3_tokenizer)
+
+using internvl3_5_tokenizer = InternVL3Tokenizer;
+REGISTER(InternVL3_5, internvl3_5_tokenizer)
+
 // using InternVL2_5Tokenizer = InternVL3Tokenizer;
 // REGISTER(InternVL2_5, InternVL2_5_Tokenizer)

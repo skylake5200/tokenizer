@@ -48,6 +48,13 @@ enum ModelType
     GLM5VL,       // 14
     KimiK25,      // 15
     KimiK25VL,    // 16
+    Qwen3Omni,    // 17
+    Qwen3_5,      // 18
+    Qwen3_5VL,    // 19
+    MiniMaxM2,    // 20
+    MiniMaxM2VL,  // 21
+    MiniCPMO4_5,  // 22
+    InternVL3_5,  // 23
     // 新增模型在这里添加...
 };
 ```
@@ -543,7 +550,7 @@ gdb --args ./test_tokenizer -t tokenizer.txt -m 7
 - **文件**: `src/Qwen3Tokenizer.hpp`
 
 ### MiniMax-M2.1 (新增)
-- **ModelType**: 18 (MiniMaxM2), 19 (MiniMaxM2VL)
+- **ModelType**: 20 (MiniMaxM2), 21 (MiniMaxM2VL)
 - **Tokenizer 文件**: `minimaxm2_tokenizer.txt` (两个版本共用同一个文件)
 - **格式**: `]~!b[]~b]system\n...{content}[e~[\n]~b]user\n{content}[e~[\n]~b]ai\n{content}[e~[\n`
 - **特点**:
@@ -559,7 +566,7 @@ gdb --args ./test_tokenizer -t tokenizer.txt -m 7
 - **文件**: `src/MiniMaxM2Tokenizer.hpp`
 
 ### MiniCPM-o-4_5 (新增)
-- **ModelType**: 20 (MiniCPMO4_5)
+- **ModelType**: 22 (MiniCPMO4_5)
 - **Tokenizer 文件**: `minicpmo4_5_tokenizer.txt`
 - **格式**: 与 MiniCPM4 相同 `<s><|im_start|>{role}\n{content}<|im_end|>\n`
 - **特点**:
@@ -571,19 +578,30 @@ gdb --args ./test_tokenizer -t tokenizer.txt -m 7
 
 
 ### Qwen3.5 (新增)
-- **ModelType**: 18 (Qwen3_5)
+- **ModelType**: 18 (Qwen3_5), 19 (Qwen3_5VL)
 - **Tokenizer 文件**: `qwen3_5_tokenizer.txt`
 - **格式**: 与 Qwen3 相同 `<|im_start|>{role}\n{content}<|im_end|>\n`
 - **特点**:
   - Vocab 大小: 248077 (vs Qwen3-Omni 的 151676)
-  - 支持文本、图像、视频、音频
+  - Qwen3_5: 文本版本（预留）
+  - Qwen3_5VL: 支持文本、图像、视频（不含 AUDIO）
   - Special token IDs: 248044-248076
-- **实现**: 复用 `Qwen3Tokenizer<TEXT, IMAGE, VIDEO, AUDIO>`
+- **实现**: 复用 `Qwen3Tokenizer<TEXT>` 和 `Qwen3Tokenizer<TEXT, IMAGE, VIDEO>`
 - **文件**: `src/Qwen3Tokenizer.hpp`, `tests/assets/qwen3_5_tokenizer.txt`
+
+### InternVL3.5 (新增)
+- **ModelType**: 23 (InternVL3_5)
+- **Tokenizer 文件**: `internvl3_5_tokenizer.txt`（1B/2B 可共用）
+- **格式**: 与 InternVL3 相同 `<|im_start|>{role}\n{content}<|im_end|>\n`
+- **特点**:
+  - 支持文本、图像、视频
+  - 图片 token: `<img><IMG_CONTEXT>... </img>`
+  - 视频 token: 与图片占位符格式一致
+- **实现**: 复用 `InternVL3Tokenizer`，注册 `InternVL3_5`
+- **文件**: `src/InternVL3Tokenizer.hpp`
 
 
 ### 更新说明 (2024-02-13)
 - Qwen3.5 改为 Qwen3_5VL (ModelType 19)
 - Qwen3_5 (ModelType 18) 预留用于后续纯文本版本
 - Qwen3_5VL 支持 TEXT, IMAGE, VIDEO (不含 AUDIO)
-

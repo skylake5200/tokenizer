@@ -18,6 +18,7 @@
 | 10 | Gemma3VL | Gemma3 多模态 (4b/12b/27b) |
 | 11 | SmolLM2 | SmolLM2 系列 |
 | 12 | SmolLM3 | SmolLM3 系列 |
+| 23 | InternVL3_5 | InternVL3.5 多模态（1B/2B 复用 InternVL3Tokenizer） |
 
 详见 [ModelType](include/BaseTokenizer.hpp#L6)
 

@@ -39,6 +39,8 @@ enum ModelType
     MiniMaxM2VL,
 
     MiniCPMO4_5,
+
+    InternVL3_5,
 };
 
 enum RoleType
