@@ -18,7 +18,17 @@
 | 10 | Gemma3VL | Gemma3 多模态 (4b/12b/27b) |
 | 11 | SmolLM2 | SmolLM2 系列 |
 | 12 | SmolLM3 | SmolLM3 系列 |
-| 23 | InternVL3_5 | InternVL3.5 多模态（1B/2B 复用 InternVL3Tokenizer） |
+| 13 | GLM5 | GLM-5 文本 |
+| 14 | GLM5VL | GLM-5 多模态 |
+| 15 | KimiK25 | Kimi-K2.5 文本 |
+| 16 | KimiK25VL | Kimi-K2.5 多模态 |
+| 17 | Qwen3Omni | Qwen3-Omni 多模态 |
+| 18 | Qwen3_5 | Qwen3.5 文本（预留） |
+| 19 | Qwen3_5VL | Qwen3.5 多模态 |
+| 20 | MiniMaxM2 | MiniMax-M2 文本 |
+| 21 | MiniMaxM2VL | MiniMax-M2 多模态 |
+| 22 | MiniCPMO4_5 | MiniCPM-o-4_5 多模态 |
+| 23 | InternVL3_5 | InternVL3.5 多模态（1B/2B 共用） |
 
 详见 [ModelType](include/BaseTokenizer.hpp#L6)
 

@@ -15,7 +15,65 @@ class LlmExporter():
         super().__init__()
         self.args = args
         self.stop_ids = []
+        self.is_fastvlm = 'fastvlm' in self.args.tokenizer_path.lower()
         self.load_pretrained()
+
+    def _encode_no_special_tokens(self, text):
+        try:
+            return self.tokenizer.encode(text, add_special_tokens=False)
+        except:
+            return self.tokenizer.encode(text)
+
+    def _resolve_local_file(self, filename):
+        candidates = []
+
+        # explicit local path
+        candidates.append(os.path.join(self.args.tokenizer_path, filename))
+
+        # tokenizer runtime path
+        if hasattr(self.tokenizer, 'name_or_path') and isinstance(self.tokenizer.name_or_path, str):
+            candidates.append(os.path.join(self.tokenizer.name_or_path, filename))
+
+        # tokenizer init kwargs may keep resolved local cache paths
+        init_kwargs = getattr(self.tokenizer, 'init_kwargs', None)
+        if isinstance(init_kwargs, dict):
+            name_or_path = init_kwargs.get('name_or_path', None)
+            if isinstance(name_or_path, str):
+                candidates.append(os.path.join(name_or_path, filename))
+
+            vocab_file = init_kwargs.get('vocab_file', None)
+            if isinstance(vocab_file, str):
+                candidates.append(os.path.join(os.path.dirname(vocab_file), filename))
+
+            merges_file = init_kwargs.get('merges_file', None)
+            if isinstance(merges_file, str) and filename == 'merges.txt':
+                candidates.append(merges_file)
+
+        for path in candidates:
+            if isinstance(path, str) and os.path.exists(path):
+                return path
+        return None
+
+    def _ensure_fastvlm_image_single_token(self):
+        # FastVLM vision injection expects "<image>" to map to a single token id.
+        # Keep this logic isolated to FastVLM to avoid changing behavior of other models.
+        if not self.is_fastvlm:
+            return
+
+        image_token = "<image>"
+        before = self._encode_no_special_tokens(image_token)
+        if len(before) == 1:
+            return
+
+        vocab_before = len(self.tokenizer.get_vocab())
+        added = self.tokenizer.add_tokens([image_token], special_tokens=True)
+        after = self._encode_no_special_tokens(image_token)
+
+        if len(after) != 1:
+            raise RuntimeError(f"FastVLM patch failed: {image_token} is not single token, ids={after}")
+
+        vocab_after = len(self.tokenizer.get_vocab())
+        print(f"[FastVLM] patched {image_token}: ids {before} -> {after}, add_tokens={added}, vocab {vocab_before}->{vocab_after}")
 
     def load_pretrained(self):
         try:
@@ -29,9 +87,13 @@ class LlmExporter():
                 self.tokenizer = None
         if None == self.tokenizer:
             print("Default load tokenizer failed for ", self.args.tokenizer_path)
+            return
+
+        self._ensure_fastvlm_image_single_token()
         
-        if os.path.exists(os.path.join(self.args.tokenizer_path, 'generation_config.json')):
-            self.generation_config = json.load(open(os.path.join(self.args.tokenizer_path, 'generation_config.json'), 'r'))
+        generation_config_file = self._resolve_local_file('generation_config.json')
+        if generation_config_file is not None:
+            self.generation_config = json.load(open(generation_config_file, 'r'))
         else:
             self.generation_config = None
         
@@ -64,24 +126,24 @@ class LlmExporter():
         
 
     def export_tokenizer(self):
+        if self.tokenizer is None:
+            raise RuntimeError(f"tokenizer is not loaded: {self.args.tokenizer_path}")
+
         # load tokenizer file
-        tokenizer_model = os.path.join(self.args.tokenizer_path, 'tokenizer.model')
-        ice_text_model = os.path.join(self.args.tokenizer_path, 'ice_text.model')
+        tokenizer_model = self._resolve_local_file('tokenizer.model')
+        ice_text_model = self._resolve_local_file('ice_text.model')
         try:
             import sentencepiece as spm
-            if os.path.exists(tokenizer_model):
+            if tokenizer_model is not None:
                 self.sp_model = spm.SentencePieceProcessor(tokenizer_model)
-            elif os.path.exists(ice_text_model):
+            elif ice_text_model is not None:
                 self.sp_model = spm.SentencePieceProcessor(ice_text_model)
             else:
                 self.sp_model = None
         except:
             self.sp_model = None
-        merge_file = os.path.join(self.args.tokenizer_path, 'merges.txt')
-        if os.path.exists(merge_file):
-            self.merge_txt = merge_file
-        else:
-            self.merge_txt = None
+        self.merge_txt = self._resolve_local_file('merges.txt')
+        force_huggingface_export = self.is_fastvlm and (self.merge_txt is not None)
         # TOKENIZER MAGIC NUMBER
         MAGIC_NUMBER = 430
         # TOKENIZER TYPE
@@ -170,7 +232,7 @@ class LlmExporter():
                     fp.write(f'{len(vocab_list)}\n')
                 for vocab in vocab_list:
                     fp.write(vocab)
-        elif hasattr(self.tokenizer, 'mergeable_ranks'):
+        elif hasattr(self.tokenizer, 'mergeable_ranks') and not force_huggingface_export:
             # tikton
             vocab_list = []
             for k, v in self.tokenizer.mergeable_ranks.items():

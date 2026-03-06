@@ -5,42 +5,30 @@
 
 enum ModelType
 {
-    Qwen2_5,
-    Qwen3,
-    Qwen3VL,
-
-    InternVL3,
-
-    HunYuan,
-
-    SmolVLM2,
-    FastVLM,
-
-    MiniCPM4,
-    MiniCPMV4,
-
-    Gemma3,
-    Gemma3VL,
-
-    SmolLM2,
-    SmolLM3,
-
-    GLM5,
-    GLM5VL,
-
-    KimiK25,
-    KimiK25VL,
-
-    Qwen3Omni,
-    Qwen3_5,    // Reserved for future text-only version
-    Qwen3_5VL,
-
-    MiniMaxM2,
-    MiniMaxM2VL,
-
-    MiniCPMO4_5,
-
-    InternVL3_5,
+    Qwen2_5,      // 0
+    Qwen3,        // 1
+    Qwen3VL,      // 2
+    InternVL3,    // 3
+    HunYuan,      // 4
+    SmolVLM2,     // 5
+    FastVLM,      // 6
+    MiniCPM4,     // 7
+    MiniCPMV4,    // 8
+    Gemma3,       // 9
+    Gemma3VL,     // 10
+    SmolLM2,      // 11
+    SmolLM3,      // 12
+    GLM5,         // 13
+    GLM5VL,       // 14
+    KimiK25,      // 15
+    KimiK25VL,    // 16
+    Qwen3Omni,    // 17
+    Qwen3_5,      // 18, reserved for future text-only version
+    Qwen3_5VL,    // 19
+    MiniMaxM2,    // 20
+    MiniMaxM2VL,  // 21
+    MiniCPMO4_5,  // 22
+    InternVL3_5,  // 23
 };
 
 enum RoleType

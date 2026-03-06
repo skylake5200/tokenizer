@@ -27,7 +27,6 @@ int main() {
         {"Qwen3", true},
         {"Qwen3VL", true},
         {"InternVL3", true},
-        {"InternVL3_5", true},
         {"HunYuan", true},
         {"SmolVLM2", true},
         {"FastVLM", true},
@@ -35,7 +34,19 @@ int main() {
         {"MiniCPMV4", true},
         {"Gemma3", true},
         {"Gemma3VL", true},
+        {"SmolLM2", true},
         {"SmolLM3", true},
+        {"GLM5", true},
+        {"GLM5VL", true},
+        {"KimiK25", true},
+        {"KimiK25VL", true},
+        {"Qwen3Omni", true},
+        {"Qwen3_5", true},
+        {"Qwen3_5VL", true},
+        {"MiniMaxM2", true},
+        {"MiniMaxM2VL", true},
+        {"MiniCPMO4_5", true},
+        {"InternVL3_5", true},
     };
     
     // 测试用例：无效的模型名称
