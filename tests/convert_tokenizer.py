@@ -208,7 +208,7 @@ class LlmExporter():
                     token_type = UNUSED
                 elif self.sp_model.IsByte(i):
                     token_type = BYTE
-                if self.args.path == 'Chatglm_6b':
+                if getattr(self.args, 'path', '') == 'Chatglm_6b':
                     if '<n>' in token: token = '\n'
                     if '<|tab|>' in token: token = '\t'
                     if '<|blank_' in token: token = ' ' * int(token[8:token.find('|>')])
@@ -226,7 +226,7 @@ class LlmExporter():
                         pass
             with open(file_path, "w", encoding="utf8") as fp:
                 write_header(fp, SENTENCEPIECE, special_list, prefix_list)
-                if self.model_type == "gemma3" or self.model_type == "gemma3-text":
+                if getattr(self, 'model_type', '') == "gemma3" or getattr(self, 'model_type', '') == "gemma3-text":
                     fp.write(f'{len(vocab_list) + 1}\n') # len(vocab_list)==262144, self.tokenizer([262144])=='image_soft_token' is a special token
                 else:
                     fp.write(f'{len(vocab_list)}\n')

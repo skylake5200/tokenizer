@@ -16,6 +16,7 @@
 #include "GLM5Tokenizer.hpp"
 #include "KimiK25Tokenizer.hpp"
 #include "MiniMaxM2Tokenizer.hpp"
+#include "PaddleOCRVLTokenizer.hpp"
 
 std::shared_ptr<BaseTokenizer> create_tokenizer(ModelType type)
 {

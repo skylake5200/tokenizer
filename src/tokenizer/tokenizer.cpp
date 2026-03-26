@@ -415,7 +415,19 @@ void Sentencepiece::encode(const std::string& str, std::vector<int>& ids) {
 }
 
 std::string Sentencepiece::decode(int id) {
-    auto piece = sentence_pieces_[id].piece;
+    const auto& sp = sentence_pieces_[id];
+    if (sp.type == PieceType::BYTE && sp.piece.size() == 6 &&
+        sp.piece[0] == '<' && sp.piece[1] == '0' && sp.piece[2] == 'x' && sp.piece[5] == '>') {
+        auto hex2val = [](char c) -> int {
+            if (c >= '0' && c <= '9') return c - '0';
+            if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+            if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+            return 0;
+        };
+        char byte = (char)((hex2val(sp.piece[3]) << 4) | hex2val(sp.piece[4]));
+        return std::string(1, byte);
+    }
+    auto piece = sp.piece;
     int pos = piece.find("▁");
     if (pos != -1) {
         piece.replace(pos, pos + 3, " ");
