@@ -273,10 +273,18 @@ def main():
     
     # 加载 tokenizer
     print(f"Loading tokenizer from: {args.tokenizer_path}")
+    tokenizer = None
     try:
         tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path, trust_remote_code=True, use_fast=False)
     except:
-        tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path, trust_remote_code=True)
+        tokenizer = None
+    if tokenizer is None:
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path, trust_remote_code=True)
+        except Exception as e:
+            # Workaround for some newer tokenizer configs (e.g. google/gemma-4-31B-it) where
+            # `extra_special_tokens` may not match Transformers' expected schema.
+            tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path, trust_remote_code=True, extra_special_tokens={})
     
     if tokenizer is None:
         print("Failed to load tokenizer")

@@ -86,6 +86,13 @@ class LlmExporter():
             except:
                 self.tokenizer = None
         if None == self.tokenizer:
+            # Workaround for some newer tokenizer configs (e.g. google/gemma-4-31B-it) where
+            # `extra_special_tokens` may not match Transformers' expected schema.
+            try:
+                self.tokenizer = AutoTokenizer.from_pretrained(self.args.tokenizer_path, trust_remote_code=True, extra_special_tokens={})
+            except:
+                self.tokenizer = None
+        if None == self.tokenizer:
             print("Default load tokenizer failed for ", self.args.tokenizer_path)
             return
 

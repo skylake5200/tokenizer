@@ -30,6 +30,7 @@
 | 22 | MiniCPMO4_5 | MiniCPM-o-4_5 多模态 |
 | 23 | InternVL3_5 | InternVL3.5 多模态（1B/2B 共用） |
 | 24 | PaddleOCR_VL | Towards a Multi-Task 0.9B VLM for Robust In-the-Wild Document Parsing |
+| 25 | Gemma4 | Gemma4 多模态 (google/gemma-4-*-it) |
 
 详见 [ModelType](include/BaseTokenizer.hpp#L6)
 

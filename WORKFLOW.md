@@ -51,12 +51,14 @@ enum ModelType
     Qwen3Omni,    // 17
     Qwen3_5,      // 18
     Qwen3_5VL,    // 19
-    MiniMaxM2,    // 20
-    MiniMaxM2VL,  // 21
-    MiniCPMO4_5,  // 22
-    InternVL3_5,  // 23
-    // 新增模型在这里添加...
-};
+	    MiniMaxM2,    // 20
+	    MiniMaxM2VL,  // 21
+	    MiniCPMO4_5,  // 22
+	    InternVL3_5,  // 23
+	    PaddleOCRVL,  // 24
+	    Gemma4,       // 25
+	    // 新增模型在这里添加...
+	};
 ```
 
 ---

@@ -237,8 +237,14 @@ def main():
     try:
         tokenizer = AutoTokenizer.from_pretrained(args.model, trust_remote_code=True)
     except Exception as e:
-        print(f"错误: 加载 tokenizer 失败: {e}")
-        sys.exit(1)
+        # Workaround for some newer tokenizer configs (e.g. google/gemma-4-31B-it) where
+        # `extra_special_tokens` may not match Transformers' expected schema.
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(args.model, trust_remote_code=True, extra_special_tokens={})
+            print(f"警告: 默认加载失败，已使用 extra_special_tokens={{}} 进行兼容加载: {e}")
+        except Exception as e2:
+            print(f"错误: 加载 tokenizer 失败: {e2}")
+            sys.exit(1)
     
     # 基本信息
     vocab = tokenizer.get_vocab()

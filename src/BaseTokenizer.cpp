@@ -11,6 +11,7 @@
 #include "HunYuanTokenizer.hpp"
 #include "MiniCPM4Tokenizer.hpp"
 #include "Gemma3Tokenizer.hpp"
+#include "Gemma4Tokenizer.hpp"
 #include "SmolLM2Tokenizer.hpp"
 #include "SmolLM3Tokenizer.hpp"
 #include "GLM5Tokenizer.hpp"

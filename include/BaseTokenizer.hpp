@@ -30,6 +30,7 @@ enum ModelType
     MiniCPMO4_5,  // 22
     InternVL3_5,  // 23
     PaddleOCRVL,  // 24
+    Gemma4,       // 25 (google/gemma-4-*-it)
 };
 
 enum RoleType

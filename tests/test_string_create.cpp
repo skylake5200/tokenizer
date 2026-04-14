@@ -34,6 +34,7 @@ int main() {
         {"MiniCPMV4", true},
         {"Gemma3", true},
         {"Gemma3VL", true},
+        {"Gemma4", true},
         {"SmolLM2", true},
         {"SmolLM3", true},
         {"GLM5", true},
