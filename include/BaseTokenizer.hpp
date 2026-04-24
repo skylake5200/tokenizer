@@ -31,6 +31,7 @@ enum ModelType
     InternVL3_5,  // 23
     PaddleOCRVL,  // 24
     Gemma4,       // 25 (google/gemma-4-*-it)
+    Gemma4VL,     // 26
 };
 
 enum RoleType

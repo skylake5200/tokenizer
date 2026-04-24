@@ -54,6 +54,78 @@ class LlmExporter():
                 return path
         return None
 
+    def _load_tokenizer_json_bpe(self):
+        tokenizer_json = self._resolve_local_file('tokenizer.json')
+        if tokenizer_json is None:
+            return None
+
+        with open(tokenizer_json, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+
+        model = config.get('model', {})
+        if model.get('type', '').upper() != 'BPE':
+            return None
+
+        vocab = model.get('vocab', None)
+        merges = model.get('merges', None)
+        if not isinstance(vocab, dict) or not merges:
+            return None
+
+        max_id = -1
+        for idx in vocab.values():
+            max_id = max(max_id, int(idx))
+        for item in config.get('added_tokens', []):
+            if isinstance(item, dict) and 'id' in item:
+                max_id = max(max_id, int(item['id']))
+
+        if max_id < 0:
+            raise RuntimeError(
+                f'{tokenizer_json}: model.vocab is empty, cannot export HF BPE tokenizer')
+
+        vocab_list = ['<unk>' for _ in range(max_id + 1)]
+        filled = [False] * (max_id + 1)
+        for token, idx in vocab.items():
+            vocab_list[int(idx)] = token
+            filled[int(idx)] = True
+        for item in config.get('added_tokens', []):
+            if not isinstance(item, dict) or 'id' not in item or 'content' not in item:
+                continue
+            idx = int(item['id'])
+            if idx >= len(vocab_list):
+                vocab_list.extend(['<unk>' for _ in range(idx + 1 - len(vocab_list))])
+                filled.extend([False] * (idx + 1 - len(filled)))
+            vocab_list[idx] = item['content']
+            filled[idx] = True
+
+        gaps = sum(1 for f in filled if not f)
+        if gaps > 0:
+            # An unfilled id means some vocab entry is missing. Decoder on the device
+            # will return the literal string "<unk>" for these ids, which looks like
+            # correct output but is actually a placeholder bug. Surface it loudly.
+            print(f'[convert_tokenizer] WARNING: {gaps} / {len(vocab_list)} vocab ids '
+                  f'have no entry in tokenizer.json and will decode as "<unk>".')
+
+        merge_list = []
+        for merge in merges:
+            if isinstance(merge, (list, tuple)) and len(merge) == 2:
+                left, right = str(merge[0]), str(merge[1])
+            elif isinstance(merge, str):
+                parts = merge.split(' ', 1)
+                if len(parts) != 2:
+                    raise RuntimeError(f'invalid BPE merge rule in {tokenizer_json}: {merge!r}')
+                left, right = parts[0], parts[1]
+            else:
+                raise RuntimeError(f'invalid BPE merge rule in {tokenizer_json}: {merge!r}')
+            if not left or not right:
+                raise RuntimeError(f'empty side in BPE merge rule in {tokenizer_json}: {merge!r}')
+            merge_list.append((left, right))
+
+        if not merge_list:
+            raise RuntimeError(
+                f'{tokenizer_json}: BPE model has vocab but no merges; refusing to export')
+
+        return vocab_list, merge_list
+
     def _ensure_fastvlm_image_single_token(self):
         # FastVLM vision injection expects "<image>" to map to a single token id.
         # Keep this logic isolated to FastVLM to avoid changing behavior of other models.
@@ -150,6 +222,7 @@ class LlmExporter():
         except:
             self.sp_model = None
         self.merge_txt = self._resolve_local_file('merges.txt')
+        tokenizer_json_bpe = self._load_tokenizer_json_bpe()
         force_huggingface_export = self.is_fastvlm and (self.merge_txt is not None)
         # TOKENIZER MAGIC NUMBER
         MAGIC_NUMBER = 430
@@ -279,6 +352,21 @@ class LlmExporter():
                     fp.write(v + '\n')
                 for m in merge_list:
                     fp.write(m)
+        elif tokenizer_json_bpe is not None:
+            # HuggingFace BPE tokenizer.json can carry merges without a merges.txt file
+            # (for example Gemma4). Export it as type 3 to preserve BPE merge ranks.
+            vocab_list, merge_list = tokenizer_json_bpe
+            special_list = list(self.tokenizer.added_tokens_decoder.keys())
+            with open(file_path, "w", encoding="utf8") as fp:
+                write_header(fp, HUGGINGFACE, special_list)
+                fp.write(f'{len(vocab_list)} {len(merge_list)}\n')
+                for token in vocab_list:
+                    token_encode = base64.b64encode(token.encode("utf-8")).decode("utf8")
+                    fp.write(f'b64:{token_encode}\n')
+                for left, right in merge_list:
+                    left_encode = base64.b64encode(left.encode("utf-8")).decode("utf8")
+                    right_encode = base64.b64encode(right.encode("utf-8")).decode("utf8")
+                    fp.write(f'b64:{left_encode} b64:{right_encode}\n')
         else:
             # tiktoken or bert
             if 'bert' in type(self.tokenizer).__name__.lower():

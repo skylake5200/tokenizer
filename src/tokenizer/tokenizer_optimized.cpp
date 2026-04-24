@@ -26,6 +26,34 @@ static inline size_t one_char_len(const char *src) {
     return "\1\1\1\1\1\1\1\1\1\1\1\1\2\2\3\4"[(*src & 0xFF) >> 4];
 }
 
+static inline void replace_all(std::string& text, const std::string& from, const std::string& to) {
+    if (from.empty()) return;
+    size_t pos = 0;
+    while ((pos = text.find(from, pos)) != std::string::npos) {
+        text.replace(pos, from.size(), to);
+        pos += to.size();
+    }
+}
+
+static inline bool parse_hex_byte_token(const std::string& token, unsigned char* value) {
+    if (token.size() != 6 || token[0] != '<' || token[1] != '0' || token[2] != 'x' || token[5] != '>') {
+        return false;
+    }
+    auto hex2val = [](char c) -> int {
+        if (c >= '0' && c <= '9') return c - '0';
+        if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+        if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+        return -1;
+    };
+    const int hi = hex2val(token[3]);
+    const int lo = hex2val(token[4]);
+    if (hi < 0 || lo < 0) {
+        return false;
+    }
+    *value = (unsigned char)((hi << 4) | lo);
+    return true;
+}
+
 static std::string base64_decode(const std::string& str) {
     int in_len = str.size();
     int i = 0;
@@ -64,6 +92,40 @@ static std::string base64_decode(const std::string& str) {
         }
     }
     return ret;
+}
+
+static std::string maybe_decode_b64_token(const std::string& line) {
+    static const std::string prefix = "b64:";
+    if (line.rfind(prefix, 0) != 0) {
+        return line;
+    }
+    return base64_decode(line.substr(prefix.size()));
+}
+
+static bool parse_merge_line(const std::string& line, std::string* left, std::string* right) {
+    static const std::string prefix = "b64:";
+    if (line.rfind(prefix, 0) == 0) {
+        const size_t sep = line.find(' ');
+        if (sep == std::string::npos) {
+            return false;
+        }
+        const std::string lhs = line.substr(0, sep);
+        const std::string rhs = line.substr(sep + 1);
+        if (rhs.rfind(prefix, 0) != 0) {
+            return false;
+        }
+        *left = base64_decode(lhs.substr(prefix.size()));
+        *right = base64_decode(rhs.substr(prefix.size()));
+        return true;
+    }
+
+    const size_t sep = line.find(' ');
+    if (sep == std::string::npos) {
+        return false;
+    }
+    *left = line.substr(0, sep);
+    *right = line.substr(sep + 1);
+    return true;
 }
 
 static inline void to_lower_case(std::string& str) {
@@ -654,13 +716,120 @@ void BertTokenizer::encode(const std::string& str, std::vector<int>& ids) {
 }
 
 std::wstring utf8_to_wstring(const std::string& str) {
-    std::wstring_convert<std::codecvt_utf8<wchar_t>> myconv;
-    return myconv.from_bytes(str);
+    auto is_cont = [](unsigned char c) { return (c & 0xC0) == 0x80; };
+
+    std::wstring out;
+    out.reserve(str.size());
+
+    for (size_t i = 0; i < str.size();) {
+        const unsigned char c0 = static_cast<unsigned char>(str[i]);
+
+        if (c0 < 0x80) {
+            out.push_back((wchar_t)c0);
+            ++i;
+            continue;
+        }
+
+        uint32_t codepoint = 0;
+        size_t advance = 0;
+
+        if ((c0 & 0xE0) == 0xC0 && i + 1 < str.size()) {
+            const unsigned char c1 = static_cast<unsigned char>(str[i + 1]);
+            if (is_cont(c1)) {
+                const uint32_t cp = ((uint32_t)(c0 & 0x1F) << 6) | (uint32_t)(c1 & 0x3F);
+                if (cp >= 0x80) {
+                    codepoint = cp;
+                    advance = 2;
+                }
+            }
+        } else if ((c0 & 0xF0) == 0xE0 && i + 2 < str.size()) {
+            const unsigned char c1 = static_cast<unsigned char>(str[i + 1]);
+            const unsigned char c2 = static_cast<unsigned char>(str[i + 2]);
+            if (is_cont(c1) && is_cont(c2)) {
+                const uint32_t cp = ((uint32_t)(c0 & 0x0F) << 12) |
+                                    ((uint32_t)(c1 & 0x3F) << 6) |
+                                    (uint32_t)(c2 & 0x3F);
+                if (cp >= 0x800 && !(cp >= 0xD800 && cp <= 0xDFFF)) {
+                    codepoint = cp;
+                    advance = 3;
+                }
+            }
+        } else if ((c0 & 0xF8) == 0xF0 && i + 3 < str.size()) {
+            const unsigned char c1 = static_cast<unsigned char>(str[i + 1]);
+            const unsigned char c2 = static_cast<unsigned char>(str[i + 2]);
+            const unsigned char c3 = static_cast<unsigned char>(str[i + 3]);
+            if (is_cont(c1) && is_cont(c2) && is_cont(c3)) {
+                const uint32_t cp = ((uint32_t)(c0 & 0x07) << 18) |
+                                    ((uint32_t)(c1 & 0x3F) << 12) |
+                                    ((uint32_t)(c2 & 0x3F) << 6) |
+                                    (uint32_t)(c3 & 0x3F);
+                if (cp >= 0x10000 && cp <= 0x10FFFF) {
+                    codepoint = cp;
+                    advance = 4;
+                }
+            }
+        }
+
+        if (advance != 0) {
+            // Windows has 16-bit wchar_t; codepoints > 0xFFFF must be emitted as a UTF-16
+            // surrogate pair so that the round-trip through wstring_to_utf8 (which uses
+            // codecvt_utf8 and expects surrogates) and BPE table lookups stay consistent.
+            // Linux/macOS have 32-bit wchar_t; the else-branch is the common case.
+            if (sizeof(wchar_t) >= 4 || codepoint <= 0xFFFF) {
+                out.push_back((wchar_t)codepoint);
+            } else {
+                const uint32_t v = codepoint - 0x10000;
+                out.push_back((wchar_t)(0xD800u | (v >> 10)));
+                out.push_back((wchar_t)(0xDC00u | (v & 0x3FFu)));
+            }
+            i += advance;
+            continue;
+        }
+
+        // Keep malformed bytes representable instead of throwing.
+        out.push_back((wchar_t)c0);
+        ++i;
+    }
+
+    return out;
 }
 
 std::string wstring_to_utf8(const std::wstring& str) {
-    std::wstring_convert<std::codecvt_utf8<wchar_t>> myconv;
-    return myconv.to_bytes(str);
+    // Hand-rolled, independent of std::wstring_convert / std::codecvt_utf8 which are
+    // deprecated in C++17 and removed in C++26. Handles 16-bit wchar_t (Windows) by
+    // reassembling UTF-16 surrogate pairs back into a single codepoint before UTF-8
+    // encoding. Also the inverse round-trip partner of utf8_to_wstring above.
+    std::string out;
+    out.reserve(str.size() * 2);
+    for (size_t i = 0; i < str.size();) {
+        uint32_t cp = (uint32_t)str[i];
+        ++i;
+        if (sizeof(wchar_t) == 2 && cp >= 0xD800u && cp <= 0xDBFFu && i < str.size()) {
+            const uint32_t low = (uint32_t)str[i];
+            if (low >= 0xDC00u && low <= 0xDFFFu) {
+                cp = 0x10000u + (((cp - 0xD800u) << 10) | (low - 0xDC00u));
+                ++i;
+            }
+        }
+        if (cp < 0x80u) {
+            out.push_back((char)cp);
+        } else if (cp < 0x800u) {
+            out.push_back((char)(0xC0u | (cp >> 6)));
+            out.push_back((char)(0x80u | (cp & 0x3Fu)));
+        } else if (cp < 0x10000u) {
+            // Unpaired surrogates also fall here; encode them as-is for round-trip stability.
+            out.push_back((char)(0xE0u | (cp >> 12)));
+            out.push_back((char)(0x80u | ((cp >> 6) & 0x3Fu)));
+            out.push_back((char)(0x80u | (cp & 0x3Fu)));
+        } else if (cp <= 0x10FFFFu) {
+            out.push_back((char)(0xF0u | (cp >> 18)));
+            out.push_back((char)(0x80u | ((cp >> 12) & 0x3Fu)));
+            out.push_back((char)(0x80u | ((cp >> 6) & 0x3Fu)));
+            out.push_back((char)(0x80u | (cp & 0x3Fu)));
+        }
+        // codepoints > 0x10FFFF are invalid; drop silently.
+    }
+    return out;
 }
 
 // Given a token as a UTF8 string, encode each byte into an wchar_t
@@ -675,7 +844,7 @@ void byte_encode_token(const std::string& token,
 }
 
 bool HuggingfaceTokenizer::load_vocab(std::ifstream& tok_file) {
-    std::string line, token;
+    std::string line;
     // get nums
     int vocab_len, merge_len;
     std::getline(tok_file, line);
@@ -685,15 +854,49 @@ bool HuggingfaceTokenizer::load_vocab(std::ifstream& tok_file) {
     decoder_.resize(vocab_len);
     for (int i = 0; i < vocab_len; i++) {
         std::getline(tok_file, line);
-        encoder_.insert({line, i});
-        decoder_[i] = line;
+        const std::string token = maybe_decode_b64_token(line);
+        encoder_.insert({token, i});
+        decoder_[i] = token;
     }
     // load merge_rule
     for (int i = 0; i < merge_len; i++) {
         std::getline(tok_file, line);
-        int d = line.find(" ");
-        bpe_ranks_.insert({{utf8_to_wstring(line.substr(0, d)),
-            utf8_to_wstring(line.substr(d + 1))}, i});
+        std::string left;
+        std::string right;
+        if (!parse_merge_line(line, &left, &right)) {
+            std::cerr << "Error: invalid merge line: " << line << std::endl;
+            return false;
+        }
+        bpe_ranks_.insert({{utf8_to_wstring(left), utf8_to_wstring(right)}, i});
+    }
+    // Heuristic mode detection: look at which whitespace marker dominates in the vocab.
+    //   SentencePiece-style ("▁" = U+2581 lower-one-eighth block) → SpaceReplaceBPE
+    //   GPT-2-style          ("Ġ" = U+0120)                        → GPT2ByteBPE
+    // Picking the wrong path silently produces wrong tokenization.
+    size_t space_piece_count = 0;
+    size_t gpt_piece_count = 0;
+    for (const auto& token : decoder_) {
+        if (token.rfind(u8"▁", 0) == 0) ++space_piece_count;
+        if (token.rfind("Ġ", 0) == 0) ++gpt_piece_count;
+    }
+    const size_t total_piece_count = space_piece_count + gpt_piece_count;
+    if (space_piece_count > 1024 && space_piece_count > gpt_piece_count * 8) {
+        mode_ = Mode::SpaceReplaceBPE;
+        printf("huggingface tokenizer mode = space_replace_bpe\n");
+    } else if (gpt_piece_count > 1024 && gpt_piece_count > space_piece_count * 8) {
+        mode_ = Mode::GPT2ByteBPE;
+        printf("huggingface tokenizer mode = gpt2_byte_bpe\n");
+    } else {
+        mode_ = Mode::GPT2ByteBPE;
+        printf("huggingface tokenizer mode = gpt2_byte_bpe (fallback; "
+               "ambiguous vocab: space=%zu gpt=%zu)\n",
+               space_piece_count, gpt_piece_count);
+        if (total_piece_count < 64) {
+            std::cerr << "WARNING: HuggingfaceTokenizer vocab has very few whitespace-prefix "
+                         "pieces; mode detection is unreliable. Verify tokenization on a known "
+                         "sample before trusting inference output."
+                      << std::endl;
+        }
     }
     // bytes_to_unicode (GPT-2 / HF BPE style)
     // Build a full 256-entry mapping for fast encoding.
@@ -723,6 +926,14 @@ bool HuggingfaceTokenizer::load_vocab(std::ifstream& tok_file) {
         u2b_.insert({b2u_[(size_t)b], (uint8_t)b});
     }
     return true;
+}
+
+std::string HuggingfaceTokenizer::byte_to_piece(unsigned char c) const {
+    const int len = ::snprintf(nullptr, 0, "<0x%02X>", c);
+    std::string s;
+    s.resize(len);
+    ::snprintf(&s[0], s.size() + 1, "<0x%02X>", c);
+    return s;
 }
 
 void get_pairs(const std::wstring& word, std::vector<std::pair<std::wstring, std::wstring>>* pairs) {
@@ -795,6 +1006,37 @@ void HuggingfaceTokenizer::bpe(const std::wstring& token, const BPERanks& bpe_ra
 }
 
 void HuggingfaceTokenizer::encode(const std::string& str, std::vector<int>& ids) {
+    if (mode_ == Mode::SpaceReplaceBPE) {
+        std::string normalized;
+        normalized.reserve(str.size() * 2);
+        for (char c : str) {
+            if (c == ' ') normalized += u8"▁";
+            else normalized.push_back(c);
+        }
+
+        std::vector<std::wstring> bpe_tokens;
+        bpe_tokens.reserve(normalized.size());
+        bpe(utf8_to_wstring(normalized), bpe_ranks_, &bpe_tokens);
+        for (const auto& ws : bpe_tokens) {
+            const std::string token = wstring_to_utf8(ws);
+            auto iter = encoder_.find(token);
+            if (iter != encoder_.end()) {
+                ids.push_back(iter->second);
+                continue;
+            }
+            for (unsigned char b : token) {
+                const std::string piece = byte_to_piece(b);
+                auto byte_iter = encoder_.find(piece);
+                if (byte_iter == encoder_.end()) {
+                    std::cerr << "Error: byte fallback token not in vocab: " << piece << std::endl;
+                    return;
+                }
+                ids.push_back(byte_iter->second);
+            }
+        }
+        return;
+    }
+
     // Compile regex once; avoid O(n^2) copying from suffix().str().
     static const std::regex re("('s|'t|'re|'ve|'m|'ll|'d| ?[[:alpha:]]+| ?[[:digit:]]+| ?[^\\s\\w]+|\\s+)");
 
@@ -825,9 +1067,18 @@ void HuggingfaceTokenizer::encode(const std::string& str, std::vector<int>& ids)
 }
 
 std::string HuggingfaceTokenizer::decode(int id) const {
-    // printf("decode id = %d, %lu, %s#\n", id, decoder_.size(), decoder_.at(id).c_str());
     if (id >= decoder_.size()) {
         return "";
+    }
+    if (mode_ == Mode::SpaceReplaceBPE) {
+        const std::string& token = decoder_.at(id);
+        unsigned char byte_value = 0;
+        if (parse_hex_byte_token(token, &byte_value)) {
+            return std::string(1, (char)byte_value);
+        }
+        std::string out = token;
+        replace_all(out, u8"▁", " ");
+        return out;
     }
     std::wstring w = utf8_to_wstring(decoder_.at(id));
     std::string r;

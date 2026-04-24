@@ -186,6 +186,10 @@ struct hash_pair_wstring {
     }
 };
 using BPERanks = std::unordered_map<std::pair<std::wstring, std::wstring>, int, hash_pair_wstring>;
+enum class Mode {
+    GPT2ByteBPE,
+    SpaceReplaceBPE,
+};
 public:
     HuggingfaceTokenizer() = default;
     virtual std::string decode(int id) const override;
@@ -194,7 +198,9 @@ protected:
     virtual void encode(const std::string& str, std::vector<int>& ids) override;
 private:
     void bpe(const std::wstring& token, const BPERanks& bpe_ranks, std::vector<std::wstring>* result);
+    std::string byte_to_piece(unsigned char c) const;
     BPERanks bpe_ranks_;
+    Mode mode_ = Mode::GPT2ByteBPE;
     // Fast byte -> unicode mapping for encoding (covers all 256 possible bytes)
     std::array<wchar_t, 256> b2u_{};
     std::unordered_map<wchar_t, uint8_t> u2b_;

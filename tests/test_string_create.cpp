@@ -34,7 +34,6 @@ int main() {
         {"MiniCPMV4", true},
         {"Gemma3", true},
         {"Gemma3VL", true},
-        {"Gemma4", true},
         {"SmolLM2", true},
         {"SmolLM3", true},
         {"GLM5", true},
@@ -48,6 +47,8 @@ int main() {
         {"MiniMaxM2VL", true},
         {"MiniCPMO4_5", true},
         {"InternVL3_5", true},
+        {"Gemma4", true},
+        {"Gemma4VL", true},
     };
     
     // 测试用例：无效的模型名称
