@@ -6,89 +6,109 @@ class UTF8Filter
 private:
     std::string utf8_buffer = "";
 
-    // 辅助函数：计算字符串中“有效完整 UTF-8”部分的长度
-    // 返回值是可以安全发送的字节数
-    size_t get_valid_utf8_len(const std::string &str)
+    static bool is_cont(unsigned char c)
     {
-        size_t len = str.length();
-        if (len == 0)
-            return 0;
+        return (c & 0xC0) == 0x80;
+    }
 
-        // 从字符串末尾开始回溯，检查最后一个字符是否完整
-        // UTF-8 最大长度为 4 字节，所以最多回溯 4 步
-        for (int i = 0; i < 4; ++i)
+    bool next_valid_span(size_t pos, size_t &span_len, bool &need_more) const
+    {
+        need_more = false;
+        span_len = 0;
+        if (pos >= utf8_buffer.size())
+            return false;
+
+        const unsigned char c0 = static_cast<unsigned char>(utf8_buffer[pos]);
+        if (c0 < 0x80)
         {
-            if (len <= i)
-                break; // 已经回溯到头了
-
-            unsigned char byte = static_cast<unsigned char>(str[len - 1 - i]);
-
-            // 1. 如果是 ASCII (0xxxxxxx)，那就是完整的，结束在它后面
-            if ((byte & 0x80) == 0)
-            {
-                // 如果回溯了 (i > 0)，说明后面跟着的字节是不合法的孤立后缀，
-                // 但在流式场景下，我们通常假设数据流是合法的，只是还没发完。
-                // 这里为了简单：如果最后一位是 ASCII，那它就是完整的边界。
-                if (i == 0)
-                    return len;
-                // 如果 i > 0，说明后面有 i 个 continuation byte 找不到头，这属于流还没到齐
-                // 继续找头
-            }
-
-            // 2. 检查是否是 Header Byte (11xxxxxx)
-            if ((byte & 0xC0) == 0xC0)
-            {
-                int needed_extra = 0;
-                if ((byte & 0xE0) == 0xC0)
-                    needed_extra = 1; // 2-byte char
-                else if ((byte & 0xF0) == 0xE0)
-                    needed_extra = 2; // 3-byte char
-                else if ((byte & 0xF8) == 0xF0)
-                    needed_extra = 3; // 4-byte char
-
-                // i 是当前 Header 后面实际跟的字节数
-                if (i >= needed_extra)
-                {
-                    return len; // 完整了
-                }
-                else
-                {
-                    // 不完整，这个 Header 以及后面的 i 个字节都要留给下一次
-                    return len - 1 - i;
-                }
-            }
-
-            // 3. 如果是 Continuation Byte (10xxxxxx)，继续回溯找 Header
+            span_len = 1;
+            return true;
         }
 
-        // 如果回溯 4 步都没找到 Header 或 ASCII，说明数据可能有问题
-        // 为了防止死锁，我们假设全部发送（让 JSON 库去处理或报错，或者丢弃）
-        // 但在流式拼接中，通常返回 0 等待更多数据
-        return 0;
+        if ((c0 & 0xE0) == 0xC0)
+        {
+            if (pos + 1 >= utf8_buffer.size()) { need_more = true; return false; }
+            const unsigned char c1 = static_cast<unsigned char>(utf8_buffer[pos + 1]);
+            if (is_cont(c1) && c0 >= 0xC2)
+            {
+                span_len = 2;
+                return true;
+            }
+            return false;
+        }
+
+        if ((c0 & 0xF0) == 0xE0)
+        {
+            if (pos + 2 >= utf8_buffer.size()) { need_more = true; return false; }
+            const unsigned char c1 = static_cast<unsigned char>(utf8_buffer[pos + 1]);
+            const unsigned char c2 = static_cast<unsigned char>(utf8_buffer[pos + 2]);
+            if (!is_cont(c1) || !is_cont(c2))
+                return false;
+            if (c0 == 0xE0 && c1 < 0xA0)
+                return false;
+            if (c0 == 0xED && c1 >= 0xA0)
+                return false;
+            span_len = 3;
+            return true;
+        }
+
+        if ((c0 & 0xF8) == 0xF0)
+        {
+            if (pos + 3 >= utf8_buffer.size()) { need_more = true; return false; }
+            const unsigned char c1 = static_cast<unsigned char>(utf8_buffer[pos + 1]);
+            const unsigned char c2 = static_cast<unsigned char>(utf8_buffer[pos + 2]);
+            const unsigned char c3 = static_cast<unsigned char>(utf8_buffer[pos + 3]);
+            if (!is_cont(c1) || !is_cont(c2) || !is_cont(c3))
+                return false;
+            if (c0 == 0xF0 && c1 < 0x90)
+                return false;
+            if (c0 == 0xF4 && c1 > 0x8F)
+                return false;
+            if (c0 < 0xF0 || c0 > 0xF4)
+                return false;
+            span_len = 4;
+            return true;
+        }
+
+        return false;
+    }
+
+    std::string drain_valid_utf8(bool drop_incomplete_tail)
+    {
+        std::string out;
+        size_t pos = 0;
+        while (pos < utf8_buffer.size())
+        {
+            size_t span_len = 0;
+            bool need_more = false;
+            if (next_valid_span(pos, span_len, need_more))
+            {
+                out.append(utf8_buffer, pos, span_len);
+                pos += span_len;
+                continue;
+            }
+
+            if (need_more && !drop_incomplete_tail)
+                break;
+
+            ++pos;
+        }
+
+        utf8_buffer.erase(0, pos);
+        if (drop_incomplete_tail)
+            utf8_buffer.clear();
+        return out;
     }
 
 public:
     std::string filter(const std::string &str)
     {
         utf8_buffer += str;
-        size_t send_len = get_valid_utf8_len(utf8_buffer);
-        if (send_len > 0)
-        {
-            std::string part_to_send = utf8_buffer.substr(0, send_len);
+        return drain_valid_utf8(false);
+    }
 
-            if (send_len < utf8_buffer.size())
-            {
-                utf8_buffer = utf8_buffer.substr(send_len);
-            }
-            else
-            {
-                utf8_buffer.clear();
-            }
-            return part_to_send;
-        }
-        else
-        {
-            return std::string();
-        }
+    std::string flush()
+    {
+        return drain_valid_utf8(true);
     }
 };

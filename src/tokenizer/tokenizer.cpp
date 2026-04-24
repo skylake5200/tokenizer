@@ -591,13 +591,116 @@ void BertTokenizer::encode(const std::string& str, std::vector<int>& ids) {
 }
 
 std::wstring utf8_to_wstring(const std::string& str) {
-    std::wstring_convert<std::codecvt_utf8<wchar_t>> myconv;
-    return myconv.from_bytes(str);
+    auto is_cont = [](unsigned char c) { return (c & 0xC0) == 0x80; };
+
+    std::wstring out;
+    out.reserve(str.size());
+
+    for (size_t i = 0; i < str.size();) {
+        const unsigned char c0 = static_cast<unsigned char>(str[i]);
+
+        if (c0 < 0x80) {
+            out.push_back((wchar_t)c0);
+            ++i;
+            continue;
+        }
+
+        uint32_t codepoint = 0;
+        size_t advance = 0;
+
+        if ((c0 & 0xE0) == 0xC0 && i + 1 < str.size()) {
+            const unsigned char c1 = static_cast<unsigned char>(str[i + 1]);
+            if (is_cont(c1)) {
+                const uint32_t cp = ((uint32_t)(c0 & 0x1F) << 6) | (uint32_t)(c1 & 0x3F);
+                if (cp >= 0x80) {
+                    codepoint = cp;
+                    advance = 2;
+                }
+            }
+        } else if ((c0 & 0xF0) == 0xE0 && i + 2 < str.size()) {
+            const unsigned char c1 = static_cast<unsigned char>(str[i + 1]);
+            const unsigned char c2 = static_cast<unsigned char>(str[i + 2]);
+            if (is_cont(c1) && is_cont(c2)) {
+                const uint32_t cp = ((uint32_t)(c0 & 0x0F) << 12) |
+                                    ((uint32_t)(c1 & 0x3F) << 6) |
+                                    (uint32_t)(c2 & 0x3F);
+                if (cp >= 0x800 && !(cp >= 0xD800 && cp <= 0xDFFF)) {
+                    codepoint = cp;
+                    advance = 3;
+                }
+            }
+        } else if ((c0 & 0xF8) == 0xF0 && i + 3 < str.size()) {
+            const unsigned char c1 = static_cast<unsigned char>(str[i + 1]);
+            const unsigned char c2 = static_cast<unsigned char>(str[i + 2]);
+            const unsigned char c3 = static_cast<unsigned char>(str[i + 3]);
+            if (is_cont(c1) && is_cont(c2) && is_cont(c3)) {
+                const uint32_t cp = ((uint32_t)(c0 & 0x07) << 18) |
+                                    ((uint32_t)(c1 & 0x3F) << 12) |
+                                    ((uint32_t)(c2 & 0x3F) << 6) |
+                                    (uint32_t)(c3 & 0x3F);
+                if (cp >= 0x10000 && cp <= 0x10FFFF) {
+                    codepoint = cp;
+                    advance = 4;
+                }
+            }
+        }
+
+        if (advance != 0) {
+            // Windows has 16-bit wchar_t; codepoints > 0xFFFF must be emitted as a UTF-16
+            // surrogate pair so that the round-trip through wstring_to_utf8 and BPE table
+            // lookups stay consistent. Linux/macOS have 32-bit wchar_t; the else-branch is
+            // the common case.
+            if (sizeof(wchar_t) >= 4 || codepoint <= 0xFFFF) {
+                out.push_back((wchar_t)codepoint);
+            } else {
+                const uint32_t v = codepoint - 0x10000;
+                out.push_back((wchar_t)(0xD800u | (v >> 10)));
+                out.push_back((wchar_t)(0xDC00u | (v & 0x3FFu)));
+            }
+            i += advance;
+            continue;
+        }
+
+        out.push_back((wchar_t)c0);
+        ++i;
+    }
+
+    return out;
 }
 
 std::string wstring_to_utf8(const std::wstring& str) {
-    std::wstring_convert<std::codecvt_utf8<wchar_t>> myconv;
-    return myconv.to_bytes(str);
+    // Hand-rolled. std::wstring_convert / std::codecvt_utf8 are deprecated (C++17) and
+    // removed (C++26). On Windows (16-bit wchar_t) this reassembles UTF-16 surrogate
+    // pairs back into a single codepoint before UTF-8 encoding, matching utf8_to_wstring.
+    std::string out;
+    out.reserve(str.size() * 2);
+    for (size_t i = 0; i < str.size();) {
+        uint32_t cp = (uint32_t)str[i];
+        ++i;
+        if (sizeof(wchar_t) == 2 && cp >= 0xD800u && cp <= 0xDBFFu && i < str.size()) {
+            const uint32_t low = (uint32_t)str[i];
+            if (low >= 0xDC00u && low <= 0xDFFFu) {
+                cp = 0x10000u + (((cp - 0xD800u) << 10) | (low - 0xDC00u));
+                ++i;
+            }
+        }
+        if (cp < 0x80u) {
+            out.push_back((char)cp);
+        } else if (cp < 0x800u) {
+            out.push_back((char)(0xC0u | (cp >> 6)));
+            out.push_back((char)(0x80u | (cp & 0x3Fu)));
+        } else if (cp < 0x10000u) {
+            out.push_back((char)(0xE0u | (cp >> 12)));
+            out.push_back((char)(0x80u | ((cp >> 6) & 0x3Fu)));
+            out.push_back((char)(0x80u | (cp & 0x3Fu)));
+        } else if (cp <= 0x10FFFFu) {
+            out.push_back((char)(0xF0u | (cp >> 18)));
+            out.push_back((char)(0x80u | ((cp >> 12) & 0x3Fu)));
+            out.push_back((char)(0x80u | ((cp >> 6) & 0x3Fu)));
+            out.push_back((char)(0x80u | (cp & 0x3Fu)));
+        }
+    }
+    return out;
 }
 
 // Given a token as a UTF8 string, encode each byte into an wchar_t
