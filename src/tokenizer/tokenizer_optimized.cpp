@@ -5,10 +5,10 @@
 #include <functional>
 #include <random>
 #include <codecvt>
-#include <regex>
 #include <set>
 #include <climits>
 #include <cctype>
+#include <cstring>
 namespace MNN {
 namespace Transformer {
 
@@ -1037,24 +1037,44 @@ void HuggingfaceTokenizer::encode(const std::string& str, std::vector<int>& ids)
         return;
     }
 
-    // Compile regex once; avoid O(n^2) copying from suffix().str().
-    static const std::regex re("('s|'t|'re|'ve|'m|'ll|'d| ?[[:alpha:]]+| ?[[:digit:]]+| ?[^\\s\\w]+|\\s+)");
+    // Regex-free GPT-2 byte-level BPE pre-tokenization.
+    //
+    // We intentionally avoid `std::regex` here:
+    // - some libstdc++ builds have been observed to segfault on long inputs due to deep recursion/stack usage
+    // - regex performance is unpredictable across platforms
+    //
+    // This implements the same simplified pattern previously used:
+    //   ('s|'t|'re|'ve|'m|'ll|'d| ?[[:alpha:]]+| ?[[:digit:]]+| ?[^\\s\\w]+|\\s+)
+    // over raw bytes (UTF-8 is treated as bytes, consistent with byte-level BPE).
+    const auto is_ascii_alpha = [](unsigned char c) -> bool {
+        return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+    };
+    const auto is_ascii_digit = [](unsigned char c) -> bool { return (c >= '0' && c <= '9'); };
+    const auto is_ascii_space = [](unsigned char c) -> bool {
+        switch (c) {
+            case ' ': case '\t': case '\n': case '\r': case '\f': case '\v': return true;
+            default: return false;
+        }
+    };
+    const auto is_ascii_word = [&](unsigned char c) -> bool {
+        return is_ascii_alpha(c) || is_ascii_digit(c) || c == '_';
+    };
 
     // Heuristic reserve.
     ids.reserve(ids.size() + str.size() / 4);
 
-    for (std::sregex_iterator it(str.begin(), str.end(), re), end; it != end; ++it) {
-        const std::string token = it->str();
+    const auto emit_token = [&](const char *begin, const char *end) {
+        if (!begin || !end || begin >= end) return;
         std::wstring wtoken;
-        wtoken.reserve(token.size());
-        for (unsigned char c : token) {
-            wtoken.push_back(b2u_[(size_t)c]);
+        wtoken.reserve((size_t)(end - begin));
+        for (const unsigned char *p = (const unsigned char *)begin; p < (const unsigned char *)end; ++p) {
+            wtoken.push_back(b2u_[(size_t)*p]);
         }
 
         std::vector<std::wstring> bpe_tokens;
         bpe_tokens.reserve(wtoken.size());
         bpe(wtoken, bpe_ranks_, &bpe_tokens);
-        for (const auto& ws : bpe_tokens) {
+        for (const auto &ws : bpe_tokens) {
             const std::string s = wstring_to_utf8(ws);
             auto iter = encoder_.find(s);
             if (iter == encoder_.end()) {
@@ -1062,6 +1082,101 @@ void HuggingfaceTokenizer::encode(const std::string& str, std::vector<int>& ids)
                 return;
             }
             ids.push_back(iter->second);
+        }
+    };
+
+    const char *data = str.data();
+    const size_t n = str.size();
+    size_t i = 0;
+    while (i < n) {
+        const unsigned char c = (unsigned char)data[i];
+
+        // Contractions: 's 't 're 've 'm 'll 'd
+        if (c == '\'' && i + 1 < n) {
+            const char *p = data + i;
+            const size_t remain = n - i;
+            auto match = [&](const char *lit) -> size_t {
+                const size_t len = ::strlen(lit);
+                if (remain >= len && ::memcmp(p, lit, len) == 0) return len;
+                return 0;
+            };
+            size_t clen = 0;
+            if ((clen = match("'s")) || (clen = match("'t")) || (clen = match("'re")) || (clen = match("'ve")) ||
+                (clen = match("'m")) || (clen = match("'ll")) || (clen = match("'d"))) {
+                emit_token(p, p + clen);
+                i += clen;
+                continue;
+            }
+        }
+
+        // Optional leading space for alpha/digit/punct runs.
+        if (c == ' ' && i + 1 < n) {
+            const unsigned char next = (unsigned char)data[i + 1];
+            if (is_ascii_alpha(next)) {
+                size_t j = i + 2;
+                while (j < n && is_ascii_alpha((unsigned char)data[j])) ++j;
+                emit_token(data + i, data + j);
+                i = j;
+                continue;
+            }
+            if (is_ascii_digit(next)) {
+                size_t j = i + 2;
+                while (j < n && is_ascii_digit((unsigned char)data[j])) ++j;
+                emit_token(data + i, data + j);
+                i = j;
+                continue;
+            }
+            if (!is_ascii_space(next) && !is_ascii_word(next)) {
+                size_t j = i + 2;
+                while (j < n) {
+                    const unsigned char t = (unsigned char)data[j];
+                    if (is_ascii_space(t) || is_ascii_word(t)) break;
+                    ++j;
+                }
+                emit_token(data + i, data + j);
+                i = j;
+                continue;
+            }
+        }
+
+        // Whitespace run.
+        if (is_ascii_space(c)) {
+            size_t j = i + 1;
+            while (j < n && is_ascii_space((unsigned char)data[j])) ++j;
+            emit_token(data + i, data + j);
+            i = j;
+            continue;
+        }
+
+        // Alpha run.
+        if (is_ascii_alpha(c)) {
+            size_t j = i + 1;
+            while (j < n && is_ascii_alpha((unsigned char)data[j])) ++j;
+            emit_token(data + i, data + j);
+            i = j;
+            continue;
+        }
+
+        // Digit run.
+        if (is_ascii_digit(c)) {
+            size_t j = i + 1;
+            while (j < n && is_ascii_digit((unsigned char)data[j])) ++j;
+            emit_token(data + i, data + j);
+            i = j;
+            continue;
+        }
+
+        // Punct / other non-space non-word run.
+        {
+            size_t j = i + 1;
+            while (j < n) {
+                const unsigned char t = (unsigned char)data[j];
+                if (is_ascii_space(t) || is_ascii_word(t)) break;
+                ++j;
+            }
+            emit_token(data + i, data + j);
+            i = j;
+            continue;
         }
     }
 }
