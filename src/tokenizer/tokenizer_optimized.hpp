@@ -6,6 +6,7 @@
 #include <string>
 #include <unordered_map>
 #include <iostream>
+#include <algorithm>
 #include <cstdint>
 // #include <string_view>
 #include <cstring>
