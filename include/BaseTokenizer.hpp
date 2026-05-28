@@ -32,6 +32,8 @@ enum ModelType
     PaddleOCRVL,  // 24
     Gemma4,       // 25 (google/gemma-4-*-it)
     Gemma4VL,     // 26
+    MiniCPMV46,   // 27
+    MiniCPMV46VL, // 28
 };
 
 enum RoleType
