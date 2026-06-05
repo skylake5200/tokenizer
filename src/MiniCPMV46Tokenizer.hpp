@@ -29,7 +29,8 @@ protected:
 
     std::string render_media_content(const Content &content,
                                      const std::string &pad_token,
-                                     bool use_image_id) const
+                                     bool use_image_id,
+                                     bool newline_between_media) const
     {
         std::stringstream ss;
         const int media_count = media_count_or_default(content);
@@ -37,7 +38,7 @@ protected:
 
         for (int media_index = 0; media_index < media_count; ++media_index)
         {
-            if (media_index > 0) ss << "\n";
+            if (media_index > 0 && newline_between_media) ss << "\n";
             if (use_image_id)
             {
                 ss << image_id_start_token
@@ -102,12 +103,12 @@ public:
                     break;
                 case IMAGE:
                     text << "<|im_start|>user\n"
-                         << render_media_content(content, image_pad_token, true)
+                         << render_media_content(content, image_pad_token, true, true)
                          << "<|im_end|>\n";
                     break;
                 case VIDEO:
                     text << "<|im_start|>user\n"
-                         << render_media_content(content, video_pad_token, false)
+                         << render_media_content(content, video_pad_token, false, false)
                          << "<|im_end|>\n";
                     break;
                 default:
