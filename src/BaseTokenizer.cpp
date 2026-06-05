@@ -19,6 +19,7 @@
 #include "MiniMaxM2Tokenizer.hpp"
 #include "PaddleOCRVLTokenizer.hpp"
 #include "MiniCPMV46Tokenizer.hpp"
+#include "MiniCPM5Tokenizer.hpp"
 
 std::shared_ptr<BaseTokenizer> create_tokenizer(ModelType type)
 {
