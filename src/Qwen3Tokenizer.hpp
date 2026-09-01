@@ -20,6 +20,13 @@ protected:
     std::string audio_end_token = "<|audio_end|>";
 
 public:
+    // Qwen3 系模板支持 thinking 开关: NoThink 时在生成提示里预置一个空的 think 块,
+    // 模型据此直接给出答案, 不再展开推理。
+    bool supports_thinking_toggle() const override
+    {
+        return true;
+    }
+
     bool load(const std::string tokenizer_path) override
     {
         if (!BaseMixinTokenizer<Types...>::load(tokenizer_path)) {
@@ -150,6 +157,11 @@ public:
         if (contents.size() > 0 && contents.back().role == USER && add_generation_prompt)
         {
             text << "<|im_start|>assistant\n";
+            // NoThink: 预置一个已闭合的空 think 块, 让模型跳过推理直接作答。
+            if (this->generation_thinking_mode == ThinkingMode::NoThink)
+            {
+                text << "<think>\n\n</think>\n\n";
+            }
         }
 
         // ALOGD("text: \n%s", text.str().c_str());

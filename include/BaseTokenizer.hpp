@@ -86,6 +86,16 @@ public:
     {
         this->generation_thinking_mode = mode;
     }
+    ThinkingMode get_generation_thinking_mode() const
+    {
+        return this->generation_thinking_mode;
+    }
+    // 该 tokenizer 是否支持 thinking 开关(enable_thinking/thinking_mode)。
+    // 基类默认不支持; 只有真正 honor thinking 的子类才 override 返回 true。
+    virtual bool supports_thinking_toggle() const
+    {
+        return false;
+    }
 
     virtual bool is_stop(int token) = 0;
     virtual void add_stop_token(int token) = 0;
