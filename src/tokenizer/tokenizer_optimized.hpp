@@ -199,6 +199,8 @@ protected:
     virtual void encode(const std::string& str, std::vector<int>& ids) override;
 private:
     void bpe(const std::wstring& token, const BPERanks& bpe_ranks, std::vector<std::wstring>* result);
+    // Kept only as a differential-test oracle for the O(L log L) `bpe` above.
+    void bpe_naive_reference(const std::wstring& token, const BPERanks& bpe_ranks, std::vector<std::wstring>* result);
     std::string byte_to_piece(unsigned char c) const;
     BPERanks bpe_ranks_;
     Mode mode_ = Mode::GPT2ByteBPE;

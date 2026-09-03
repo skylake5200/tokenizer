@@ -949,6 +949,88 @@ void get_pairs(const std::wstring& word, std::vector<std::pair<std::wstring, std
 }
 
 void HuggingfaceTokenizer::bpe(const std::wstring& token, const BPERanks& bpe_ranks, std::vector<std::wstring>* result) {
+    // Linked list of symbols over `token` plus a priority queue of merge candidates --
+    // the same scheme Sentencepiece::Encode uses above. The previous implementation
+    // rescanned every pair to find the global minimum on each of its O(L) rounds, so it
+    // was O(L^2) scans, each hashing a pair of wstrings whose operands grow as merges
+    // accumulate. That is affordable for a pre-tokenized word but catastrophic for the
+    // SpaceReplaceBPE path, which hands the whole prompt over as one "word": tokenizing a
+    // 4004-token prompt took 94 s and was the entire TTFT `prepare` cost.
+    //
+    // The greedy choice is unchanged -- lowest rank first, ties broken by leftmost
+    // position -- so the emitted tokens are identical.
+    const size_t n = token.size();
+    if (n == 0) return;
+    if (n == 1) {
+        result->push_back(token);
+        return;
+    }
+
+    struct Symbol {
+        size_t begin, end;  // half-open range into `token`
+        int prev, next;
+        bool dead;
+    };
+    std::vector<Symbol> symbols(n);
+    for (size_t i = 0; i < n; ++i) {
+        symbols[i] = Symbol{i, i + 1, (int)i - 1, (i + 1 < n) ? (int)(i + 1) : -1, false};
+    }
+
+    struct Candidate {
+        int rank;
+        int left;
+        size_t left_size, right_size;  // sizes when queued, to detect stale entries
+    };
+    // min-heap on rank, then on position
+    auto worse = [](const Candidate& a, const Candidate& b) {
+        if (a.rank != b.rank) return a.rank > b.rank;
+        return a.left > b.left;
+    };
+    std::priority_queue<Candidate, std::vector<Candidate>, decltype(worse)> agenda(worse);
+
+    auto piece_of = [&token, &symbols](int i) {
+        return std::wstring(token, symbols[i].begin, symbols[i].end - symbols[i].begin);
+    };
+    auto maybe_queue = [&](int left) {
+        if (left < 0 || symbols[left].dead) return;
+        const int right = symbols[left].next;
+        if (right < 0 || symbols[right].dead) return;
+        auto found = bpe_ranks.find({piece_of(left), piece_of(right)});
+        if (found == bpe_ranks.end()) return;
+        agenda.push(Candidate{found->second,
+                              left,
+                              symbols[left].end - symbols[left].begin,
+                              symbols[right].end - symbols[right].begin});
+    };
+
+    for (int i = 0; i + 1 < (int)n; ++i) maybe_queue(i);
+
+    while (!agenda.empty()) {
+        const Candidate top = agenda.top();
+        agenda.pop();
+        const int left = top.left;
+        if (symbols[left].dead) continue;
+        const int right = symbols[left].next;
+        if (right < 0 || symbols[right].dead) continue;
+        // stale entry: either side has already grown since this candidate was queued
+        if (symbols[left].end - symbols[left].begin != top.left_size) continue;
+        if (symbols[right].end - symbols[right].begin != top.right_size) continue;
+
+        symbols[left].end = symbols[right].end;
+        symbols[left].next = symbols[right].next;
+        if (symbols[right].next >= 0) symbols[symbols[right].next].prev = left;
+        symbols[right].dead = true;
+
+        maybe_queue(symbols[left].prev);
+        maybe_queue(left);
+    }
+
+    for (int i = 0; i >= 0; i = symbols[i].next) {
+        result->push_back(piece_of(i));
+    }
+}
+
+void HuggingfaceTokenizer::bpe_naive_reference(const std::wstring& token, const BPERanks& bpe_ranks, std::vector<std::wstring>* result) {
     std::set<int> merged;  // records indices in pairs that were merged.
     auto _left = [](int i, std::set<int>& merged) {
         for (int j = i - 1; j >= -1; j--) {
